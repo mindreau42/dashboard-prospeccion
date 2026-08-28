@@ -964,7 +964,7 @@ export default function SupervisorCallerSection({
               border: '#e2e8f0', topBorder: '#2563eb', color: '#1e3a8a',
               accentBg: '#eff6ff', accentBorder: '#bfdbfe',
               value: totalLlamadas.toLocaleString(),
-              label: 'Ayer', field: 'llamadasDiarias',
+              label: 'Hoy', field: 'llamadasDiarias',
               subtitle: 'Intentos realizados',
               extra: null
             }),
@@ -974,7 +974,7 @@ export default function SupervisorCallerSection({
               border: '#bbf7d0', topBorder: '#059669', color: '#047857',
               accentBg: '#ecfdf5', accentBorder: '#a7f3d0',
               value: totalContactosUnicos.toLocaleString(),
-              label: 'Ayer', field: 'contactosUnicos',
+              label: 'Hoy', field: 'contactosUnicos',
               subtitle: 'Primer Contacto',
               extra: null
             }),
@@ -1100,7 +1100,7 @@ export default function SupervisorCallerSection({
               border: '#e9d5ff', topBorder: '#7c3aed', color: '#6d28d9',
               accentBg: '#f5f3ff', accentBorder: '#ddd6fe',
               value: totalMensajes1a1.toLocaleString(),
-              label: 'Ayer', field: 'mensajesEnviados',
+              label: 'Hoy', field: 'mensajesEnviados',
               subtitle: 'Vía WhatsApp',
               extra: null
             }),
@@ -1110,7 +1110,7 @@ export default function SupervisorCallerSection({
               border: '#a5f3fc', topBorder: '#0891b2', color: '#0e7490',
               accentBg: '#ecfeff', accentBorder: '#a5f3fc',
               value: totalComunidadSkool.toLocaleString(),
-              label: 'Ayer', field: 'comunidadSkool',
+              label: 'Hoy', field: 'comunidadSkool',
               subtitle: 'Invitaciones',
               extra: null
             }),
@@ -1120,7 +1120,7 @@ export default function SupervisorCallerSection({
               border: '#fde68a', topBorder: '#d97706', color: '#b45309',
               accentBg: '#fffbeb', accentBorder: '#fde68a',
               value: totalSeguimiento.toLocaleString(),
-              label: 'Ayer', field: 'enSeguimiento',
+              label: 'Hoy', field: 'enSeguimiento',
               subtitle: 'Mostraron Interés',
               extra: null
             }),
@@ -1130,7 +1130,7 @@ export default function SupervisorCallerSection({
               border: '#86efac', topBorder: '#16a34a', color: '#15803d',
               accentBg: '#f0fdf4', accentBorder: '#86efac',
               value: totalCitas.toLocaleString(),
-              label: 'Ayer', field: 'citasAgendadas',
+              label: 'Hoy', field: 'citasAgendadas',
               subtitle: 'Reuniones confirmadas',
               extra: null
             }),
