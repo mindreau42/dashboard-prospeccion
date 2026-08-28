@@ -143,7 +143,8 @@ async function getPersistedState() {
       return {
         groupsData: row.groups_data || DEFAULT_SERVER_STATE.groupsData,
         callersData: row.callers_data || DEFAULT_SERVER_STATE.callersData,
-        adminReports: row.admin_reports || DEFAULT_SERVER_STATE.adminReports
+        adminReports: row.admin_reports || DEFAULT_SERVER_STATE.adminReports,
+        users: Array.isArray(row.users_data) && row.users_data.length > 0 ? row.users_data : undefined
       };
     }
   }
@@ -174,6 +175,7 @@ async function savePersistedState(incoming) {
         groups_data: merged.groupsData,
         callers_data: merged.callersData,
         admin_reports: merged.adminReports,
+        users_data: merged.users || [],
         updated_at: new Date().toISOString()
       })
     });

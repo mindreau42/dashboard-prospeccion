@@ -65,7 +65,8 @@ export default function UserManagementModal({
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-]/.test(password);
   const hasLength = password.length >= 6;
-  const isPasswordValid = hasUpper && hasLower && hasNumber && hasSpecial && hasLength;
+  const hasNoSpaces = password.length > 0 && !/\s/.test(password);
+  const isPasswordValid = hasUpper && hasLower && hasNumber && hasSpecial && hasLength && hasNoSpaces;
 
   const resetForm = () => {
     setFullName('');
@@ -114,14 +115,43 @@ export default function UserManagementModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!fullName.trim() || !username.trim() || !password.trim()) {
+    if (!fullName.trim() || !username.trim()) {
       setFormError('Por favor completa todos los campos requeridos.');
       return;
     }
 
-    if (password.trim().length < 3) {
-      setFormError('La contraseña debe tener al menos 3 caracteres.');
-      return;
+    const isPasswordModified = Boolean(password.trim() && password !== originalPassword);
+
+    // Enforce strict password validation for new users or when password is changed
+    if (!isEditing || isPasswordModified) {
+      if (!password.trim()) {
+        setFormError('Debes ingresar una contraseña para el usuario.');
+        return;
+      }
+      if (!hasLength) {
+        setFormError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+      if (!hasUpper) {
+        setFormError('La contraseña debe incluir al menos una letra mayúscula (A-Z).');
+        return;
+      }
+      if (!hasLower) {
+        setFormError('La contraseña debe incluir al menos una letra minúscula (a-z).');
+        return;
+      }
+      if (!hasNumber) {
+        setFormError('La contraseña debe incluir al menos un número (0-9).');
+        return;
+      }
+      if (!hasSpecial) {
+        setFormError('La contraseña debe incluir al menos un carácter especial (@$!%*?&#_-).');
+        return;
+      }
+      if (!hasNoSpaces) {
+        setFormError('La contraseña no puede contener espacios en blanco.');
+        return;
+      }
     }
 
     const assignedGroup = role === 'setter' ? (isCustomGroup ? customGroup.trim() : group) : null;
@@ -139,19 +169,20 @@ export default function UserManagementModal({
     const cleanFullName = sanitizeInput(fullName).trim();
     const cleanUsername = sanitizeInput(username).replace(/\s+/g, '');
     const cleanPass = password.replace(/\s+/g, '');
-    const { hash, salt } = hashPassword(cleanPass);
 
     let updatedList;
     if (isEditing) {
       updatedList = userList.map(u => {
         if (u.id === editId) {
+          const passData = isPasswordModified
+            ? { ...hashPassword(cleanPass), password: cleanPass }
+            : { hash: u.hash, salt: u.salt, password: u.password };
+
           return {
             ...u,
             fullName: cleanFullName,
             username: cleanUsername,
-            password: cleanPass,
-            hash,
-            salt,
+            ...passData,
             role,
             group: assignedGroup,
             callerKey: u.callerKey || (role === 'caller' ? 'Caller 1' : null)
@@ -160,6 +191,7 @@ export default function UserManagementModal({
         return u;
       });
     } else {
+      const { hash, salt } = hashPassword(cleanPass);
       const newUser = {
         id: 'usr_' + Date.now(),
         fullName: cleanFullName,
@@ -312,27 +344,47 @@ export default function UserManagementModal({
                   </label>
                   <input
                     type="text"
-                    placeholder="Escribe la clave (ej. Clave123)"
+                    placeholder="Ej. ClaveSegura@2026"
                     value={password}
                     onKeyDown={(e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                     onChange={(e) => setPassword(e.target.value.replace(/\s+/g, ''))}
                     style={{
                       width: '100%', background: '#ffffff',
-                      border: `1px solid ${
-                        password.length >= 3 ? '#10b981' : password ? '#f87171' : '#cbd5e1'
+                      border: `1.5px solid ${
+                        isPasswordValid ? '#10b981' : password ? '#ef4444' : '#cbd5e1'
                       }`,
-                      borderRadius: '6px', padding: '8px 10px', color: '#0f172a', fontSize: '12.5px', outline: 'none'
+                      borderRadius: '6px', padding: '8px 10px', color: '#0f172a', fontSize: '12.5px', outline: 'none',
+                      boxShadow: isPasswordValid ? '0 0 0 2px rgba(16,185,129,0.15)' : password ? '0 0 0 2px rgba(239,68,68,0.1)' : 'none'
                     }}
                   />
 
-                  {/* Hint */}
-                  <span style={{ fontSize: '10.5px', color: password.length >= 3 ? '#059669' : '#64748b', marginTop: '2px', display: 'block' }}>
-                    {password.length >= 3
-                      ? '✓ Contraseña válida (sin espacios, mín. 3 caracteres)'
-                      : 'Sin espacios, mínimo 3 caracteres'}
-                  </span>
+                  {/* Dynamic Requirements Checklist */}
+                  <div style={{ marginTop: '8px', padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      Requisitos de Seguridad Obligatorios:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasLength ? '#059669' : '#94a3b8', fontWeight: hasLength ? 700 : 500 }}>
+                        {hasLength ? '✓' : '○'} Mínimo 6 caracteres
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasUpper ? '#059669' : '#94a3b8', fontWeight: hasUpper ? 700 : 500 }}>
+                        {hasUpper ? '✓' : '○'} 1 Mayúscula (A-Z)
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasLower ? '#059669' : '#94a3b8', fontWeight: hasLower ? 700 : 500 }}>
+                        {hasLower ? '✓' : '○'} 1 Minúscula (a-z)
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasNumber ? '#059669' : '#94a3b8', fontWeight: hasNumber ? 700 : 500 }}>
+                        {hasNumber ? '✓' : '○'} 1 Número (0-9)
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasSpecial ? '#059669' : '#94a3b8', fontWeight: hasSpecial ? 700 : 500 }}>
+                        {hasSpecial ? '✓' : '○'} 1 Especial (@$!%*?&#_-)
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: hasNoSpaces ? '#059669' : '#94a3b8', fontWeight: hasNoSpaces ? 700 : 500 }}>
+                        {hasNoSpaces ? '✓' : '○'} Sin espacios
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
 
                 {/* Rol */}
                 <div>
