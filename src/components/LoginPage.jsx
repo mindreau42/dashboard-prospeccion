@@ -373,10 +373,19 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
           </form>
         </div>
 
-        {/* Clean subtle footer */}
-        <p style={{ textAlign: 'center', fontSize: '12px', color: '#94a3b8', marginTop: '20px', fontWeight: 500 }}>
-          Sistema de Gestión y Prospección
-        </p>
+        {/* Clean professional copyright & version footer */}
+        <div style={{ textAlign: 'center', marginTop: '22px' }}>
+          <p style={{ fontSize: '11.5px', color: '#64748b', margin: 0, fontWeight: 600 }}>
+            © {new Date().getFullYear()} Dashboard de Gestión y Prospección Comercial.
+          </p>
+          <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <span>Todos los derechos reservados.</span>
+            <span style={{ color: '#cbd5e1' }}>•</span>
+            <span style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 800, color: '#475569', fontSize: '10.5px' }}>
+              v3.0.0
+            </span>
+          </p>
+        </div>
 
       </div>
     </div>

@@ -982,6 +982,38 @@ export default function App() {
         )}
       </main>
 
+      {/* ── Professional Copyright & Versioning Footer ── */}
+      <footer style={{
+        marginTop: '32px',
+        padding: '16px 24px',
+        borderTop: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        fontSize: '12px',
+        color: '#64748b'
+      }}>
+        <div>
+          <span>© {new Date().getFullYear()} Dashboard de Gestión y Prospección Comercial. Todos los derechos reservados.</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{
+            background: '#f1f5f9',
+            border: '1px solid #e2e8f0',
+            color: '#334155',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            fontWeight: 800,
+            fontSize: '11px',
+            letterSpacing: '0.02em'
+          }}>
+            v3.0.0
+          </span>
+        </div>
+      </footer>
+
       {/* Modals */}
       <ExcelUploadModal
         isOpen={isExcelModalOpen}
