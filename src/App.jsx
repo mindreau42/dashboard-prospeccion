@@ -46,6 +46,7 @@ const SK = {
 
 const DEFAULT_USERS = [
   { id: 'usr_admin', fullName: 'Administrador Principal', username: 'admin', hash: '458a9a7114f3c46f4d475f9b9285942139cc1a4a4b7d3773b705c68723bdb481', salt: 'salt_admin_2026', role: 'admin', group: null, callerKey: null, avatar: '👑', createdAt: '2026-08-18' },
+  { id: 'usr_gerencia', fullName: 'Gerencia', username: 'gerencia', hash: '458a9a7114f3c46f4d475f9b9285942139cc1a4a4b7d3773b705c68723bdb481', salt: 'salt_admin_2026', role: 'gerencia', group: null, callerKey: null, avatar: '🏆', createdAt: '2026-08-28' },
   { id: 'usr_s1', fullName: 'Setter Canal A (Oficiales)', username: 'setter1', hash: 'c2ea9fa768855f75ee04d2d132074e3671af5259e604eda9f93f6cb00d490e5d', salt: 'salt_setter1_2026', role: 'setter', group: 'Setters Oficiales', callerKey: null, avatar: '🎯', createdAt: '2026-08-18' },
   { id: 'usr_s2', fullName: 'Setter Canal B (Aspirantes)', username: 'setter2', hash: '36e91b5ed0e8a5aad1d3aae0aa758e27dc3f87ee014242c43845fc62569eb428', salt: 'salt_setter2_2026', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🚀', createdAt: '2026-08-18' },
   { id: 'usr_c1', fullName: 'Caller 1 — Nury', username: 'caller1', hash: '37d3abffe256a4583837b808de61490d04dffd49532590f1ae8c00521d9c4015', salt: 'salt_caller1_2026', role: 'caller', group: null, callerKey: 'Caller 1', avatar: '📞', createdAt: '2026-08-18' },
@@ -158,7 +159,7 @@ export default function App() {
   const [activeView, setActiveView] = useState(() => {
     if (currentSession?.role === 'caller') return 'supervisor';
     if (currentSession?.role === 'setter') return 'funnel';
-    return 'overview';
+    return 'overview'; // admin and gerencia start at overview
   });
 
   // ── Modals State ──
@@ -367,37 +368,21 @@ export default function App() {
     };
   }, [performLiveSync]);
 
-  // ── Single Session Concurrency Watchdog (Heartbeat check every 15s) ──
+  // ── Session Keep-Alive Ping (every 30s) — Multi-session: never forces logout ──
   useEffect(() => {
-    if (!currentSession?.id || !currentSession?.sessionToken) return;
+    if (!currentSession?.id) return;
 
-    const checkHeartbeat = async () => {
-      try {
-        const res = await fetch('/api/auth/heartbeat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: currentSession.id,
-            sessionToken: currentSession.sessionToken
-          })
-        });
-
-        if (res.status === 401) {
-          const data = await res.json().catch(() => ({}));
-          // Session was invalidated because user logged in from another device/browser
-          setCurrentSession(null);
-          saveSession(null);
-          lockNavigationHistoryOnLogout();
-          setSessionAlertMessage(data.message || 'Tu sesión fue cerrada porque se inició sesión en otro dispositivo o la sesión ha expirado.');
-        }
-      } catch (_) {
-        // network issue, do not log out immediately on transient drops
-      }
+    const ping = () => {
+      fetch('/api/auth/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentSession.id })
+      }).catch(() => {});
     };
 
-    const heartbeatInterval = setInterval(checkHeartbeat, 15000);
+    const heartbeatInterval = setInterval(ping, 30000);
     return () => clearInterval(heartbeatInterval);
-  }, [currentSession]);
+  }, [currentSession?.id]);
 
   // ── Login / Logout Handlers with Security Checks ──
   const handleLogin = (userOrUsername, maybePassword) => {
@@ -425,7 +410,11 @@ export default function App() {
       };
       setCurrentSession(sessionData);
       saveSession(sessionData);
-      setActiveView(found.role === 'caller' ? 'supervisor' : (found.role === 'setter' ? 'funnel' : 'overview'));
+      // Route by role: caller → scorecard, setter → funnel, admin/gerencia → overview
+      const initialView = found.role === 'caller' ? 'supervisor'
+        : found.role === 'setter' ? 'funnel'
+        : 'overview';
+      setActiveView(initialView);
       setLoginError('');
     } else {
       setLoginError('Usuario o contraseña incorrectos. Verifica tus credenciales.');
@@ -448,7 +437,10 @@ export default function App() {
       };
       setCurrentSession(sessionData);
       saveSession(sessionData);
-      setActiveView(found.role === 'caller' ? 'supervisor' : (found.role === 'setter' ? 'funnel' : 'overview'));
+      const initialView = found.role === 'caller' ? 'supervisor'
+        : found.role === 'setter' ? 'funnel'
+        : 'overview';
+      setActiveView(initialView);
     }
   };
 
@@ -591,47 +583,38 @@ export default function App() {
   let baseReports = [];
 
   if (role === 'setter') {
+    // Setters: ONLY see their own assigned group
     const userGroup = currentSession?.group || 'Setters Aspirantes';
     const grp = groupsData?.[userGroup];
     baseReports = (grp?.records && Array.isArray(grp.records))
       ? grp.records.map(r => sanitizeRecord({ ...r, _group: userGroup }))
       : [];
-  } else {
+  } else if (role === 'admin' || role === 'gerencia') {
+    // Admin & Gerencia: full visibility, filtered by adminChannelFilter
     const rawList = [];
 
-    // Filter by adminChannelFilter
     if (adminChannelFilter === 'ALL') {
-      // Include groups data (Setters Oficiales + Setters Aspirantes)
       Object.entries(groupsData || {}).forEach(([grpName, grpObj]) => {
         if (grpObj?.records && Array.isArray(grpObj.records)) {
           grpObj.records.forEach(r => {
-            if (r && typeof r === 'object') {
-              rawList.push({ ...r, _group: grpName });
-            }
+            if (r && typeof r === 'object') rawList.push({ ...r, _group: grpName });
           });
         }
       });
-
-      // Also include any admin-uploaded reports if present
       if (adminReports && Array.isArray(adminReports) && adminReports.length > 0) {
         adminReports.forEach(r => {
-          if (r && typeof r === 'object') {
-            rawList.push({ ...r, _group: 'Global' });
-          }
+          if (r && typeof r === 'object') rawList.push({ ...r, _group: 'Global' });
         });
       }
     } else if (groupsData?.[adminChannelFilter]) {
       const grpObj = groupsData[adminChannelFilter];
       if (grpObj?.records && Array.isArray(grpObj.records)) {
         grpObj.records.forEach(r => {
-          if (r && typeof r === 'object') {
-            rawList.push({ ...r, _group: adminChannelFilter });
-          }
+          if (r && typeof r === 'object') rawList.push({ ...r, _group: adminChannelFilter });
         });
       }
     }
 
-    // Deduplicate only if identical record ID exists across channels
     const seenIds = new Set();
     baseReports = rawList.filter(r => {
       if (!r || typeof r !== 'object') return false;
@@ -746,126 +729,97 @@ export default function App() {
   const [quickSyncMsg, setQuickSyncMsg] = useState('');
 
   const handleQuickSync = async () => {
+    // Only admin and gerencia can sync
+    if (role !== 'admin' && role !== 'gerencia') return;
+
     setIsQuickSyncing(true);
     setQuickSyncMsg('Sincronizando...');
     try {
-      if (role === 'caller') {
-        const callerUrl = (callersData['Caller 1']?.sheetUrl || '').trim();
-        if (!callerUrl) {
-          setQuickSyncMsg('ℹ️ No hay Google Sheet vinculado en Call Team.');
-          setTimeout(() => setQuickSyncMsg(''), 4500);
-          return;
-        }
-        const res = await fetchSupervisorSheetData(callerUrl);
-        const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        setCallersData(prev => ({
-          ...prev,
-          'Caller 1': {
-            ...prev['Caller 1'],
-            callerRecords: res.callerRecords,
-            scorecardReports: res.scorecardReports,
-            sheetUrl: callerUrl,
-            lastSync: now
-          }
-        }));
-        setQuickSyncMsg(`✅ ${res.callerRecords.length} registros y ${res.scorecardReports.length} reportes de Callers sincronizados.`);
-      } else if (role === 'setter') {
-        const userGroup = currentSession?.group || 'Setters Oficiales';
-        const targetUrl = (groupsData[userGroup]?.url || '').trim();
-        if (!targetUrl) {
-          setIsGoogleSheetsModalOpen(true);
-          setIsQuickSyncing(false);
-          return;
-        }
-        const result = await fetchGoogleSheetData(targetUrl);
-        const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        handleUpdateGroupData(result.records, targetUrl, `Google Sheets (${result.rowCount} registros)`, now);
-        setQuickSyncMsg(`✅ ${result.rowCount} registros sincronizados con éxito.`);
-      } else {
-        // Admin: Sync ONLY channels that have an active, non-empty URL
-        const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        const syncPromises = [];
-        const syncedChannels = [];
+      const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      const syncPromises = [];
+      const syncedChannels = [];
 
-        // 1. Sync Setters Oficiales only if actively linked (URL not empty)
-        const ofiUrl = (groupsData?.['Setters Oficiales']?.url || '').trim();
-        if (ofiUrl) {
-          syncPromises.push(
-            fetchGoogleSheetData(ofiUrl)
-              .then(res => {
-                if (res?.records) {
-                  setGroupsData(prev => ({
-                    ...prev,
-                    'Setters Oficiales': {
-                      ...prev['Setters Oficiales'],
-                      records: res.records,
-                      url: ofiUrl,
-                      sourceName: `Google Sheets (${res.rowCount} registros)`,
-                      lastSync: now
-                    }
-                  }));
-                  syncedChannels.push(`Oficiales (${res.rowCount})`);
-                }
-              })
-              .catch(e => console.warn('Oficiales sync error:', e))
-          );
-        }
-
-        // 2. Sync Setters Aspirantes only if actively linked (URL not empty)
-        const aspUrl = (groupsData?.['Setters Aspirantes']?.url || '').trim();
-        if (aspUrl) {
-          syncPromises.push(
-            fetchGoogleSheetData(aspUrl)
-              .then(res => {
-                if (res?.records) {
-                  setGroupsData(prev => ({
-                    ...prev,
-                    'Setters Aspirantes': {
-                      ...prev['Setters Aspirantes'],
-                      records: res.records,
-                      url: aspUrl,
-                      sourceName: `Google Sheets (${res.rowCount} registros)`,
-                      lastSync: now
-                    }
-                  }));
-                  syncedChannels.push(`Aspirantes (${res.rowCount})`);
-                }
-              })
-              .catch(e => console.warn('Aspirantes sync error:', e))
-          );
-        }
-
-        // 3. Sync Callers only if actively linked (URL not empty)
-        const callerUrl = (callersData?.['Caller 1']?.sheetUrl || '').trim();
-        if (callerUrl) {
-          syncPromises.push(
-            fetchSupervisorSheetData(callerUrl)
-              .then(res => {
-                if (res?.callerRecords) {
-                  setCallersData(prev => ({
-                    ...prev,
-                    'Caller 1': {
-                      ...prev['Caller 1'],
-                      callerRecords: res.callerRecords,
-                      scorecardReports: res.scorecardReports,
-                      sheetUrl: callerUrl,
-                      lastSync: now
-                    }
-                  }));
-                  syncedChannels.push(`Callers (${res.callerRecords.length})`);
-                }
-              })
-              .catch(e => console.warn('Callers sync error:', e))
-          );
-        }
-
-        if (syncPromises.length === 0) {
-          setQuickSyncMsg('ℹ️ No hay enlaces activos de Google Sheets vinculados.');
-        } else {
-          await Promise.all(syncPromises);
-          setQuickSyncMsg(`✅ Sincronización exitosa: ${syncedChannels.join(' · ')} actualizados a las ${now}.`);
-        }
+      // 1. Sync Setters Oficiales only if actively linked
+      const ofiUrl = (groupsData?.['Setters Oficiales']?.url || '').trim();
+      if (ofiUrl) {
+        syncPromises.push(
+          fetchGoogleSheetData(ofiUrl)
+            .then(res => {
+              if (res?.records) {
+                setGroupsData(prev => ({
+                  ...prev,
+                  'Setters Oficiales': {
+                    ...prev['Setters Oficiales'],
+                    records: res.records,
+                    url: ofiUrl,
+                    sourceName: `Google Sheets (${res.rowCount} registros)`,
+                    lastSync: now
+                  }
+                }));
+                syncedChannels.push(`Oficiales (${res.rowCount})`);
+              }
+            })
+            .catch(e => console.warn('Oficiales sync error:', e))
+        );
       }
+
+      // 2. Sync Setters Aspirantes only if actively linked
+      const aspUrl = (groupsData?.['Setters Aspirantes']?.url || '').trim();
+      if (aspUrl) {
+        syncPromises.push(
+          fetchGoogleSheetData(aspUrl)
+            .then(res => {
+              if (res?.records) {
+                setGroupsData(prev => ({
+                  ...prev,
+                  'Setters Aspirantes': {
+                    ...prev['Setters Aspirantes'],
+                    records: res.records,
+                    url: aspUrl,
+                    sourceName: `Google Sheets (${res.rowCount} registros)`,
+                    lastSync: now
+                  }
+                }));
+                syncedChannels.push(`Aspirantes (${res.rowCount})`);
+              }
+            })
+            .catch(e => console.warn('Aspirantes sync error:', e))
+        );
+      }
+
+      // 3. Sync Callers only if actively linked
+      const callerUrl = (callersData?.['Caller 1']?.sheetUrl || '').trim();
+      if (callerUrl) {
+        syncPromises.push(
+          fetchSupervisorSheetData(callerUrl)
+            .then(res => {
+              if (res?.callerRecords) {
+                setCallersData(prev => ({
+                  ...prev,
+                  'Caller 1': {
+                    ...prev['Caller 1'],
+                    callerRecords: res.callerRecords,
+                    scorecardReports: res.scorecardReports,
+                    sheetUrl: callerUrl,
+                    lastSync: now
+                  }
+                }));
+                syncedChannels.push(`Callers (${res.callerRecords.length})`);
+              }
+            })
+            .catch(e => console.warn('Callers sync error:', e))
+        );
+      }
+
+      if (syncPromises.length === 0) {
+        setQuickSyncMsg('ℹ️ No hay enlaces activos de Google Sheets vinculados.');
+      } else {
+        await Promise.all(syncPromises);
+        // Persist synced state to server
+        saveStateToServer({ groupsData, callersData });
+        setQuickSyncMsg(`✅ Sincronización exitosa: ${syncedChannels.join(' · ')} actualizados a las ${now}.`);
+      }
+
       setTimeout(() => setQuickSyncMsg(''), 5500);
     } catch (err) {
       setQuickSyncMsg(`❌ Error: ${err.message}`);
@@ -926,13 +880,13 @@ export default function App() {
           />
         )}
 
-        {/* 5 FUNCTIONS FOR ADMIN & SETTERS */}
+        {/* 5 FUNCTIONS FOR ADMIN, GERENCIA & SETTERS */}
         {role !== 'caller' && activeView !== 'userportal' && (
           <>
-            {activeView === 'overview' && role === 'admin' && (
+            {activeView === 'overview' && (role === 'admin' || role === 'gerencia') && (
               <ExecutiveOverviewSummary reports={baseReports} callersData={callersData} groupsData={groupsData} />
             )}
-            {activeView === 'supervisor' && role === 'admin' && (
+            {activeView === 'supervisor' && (role === 'admin' || role === 'gerencia') && (
               <SupervisorCallerSection
                 callersData={callersData}
                 onUpdateCallerData={handleUpdateCallerData}
@@ -948,14 +902,10 @@ export default function App() {
                   <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginBottom: '6px' }}>No hay datos cargados</h3>
                   <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 20px', lineHeight: 1.5 }}>
                     {role === 'setter'
-                      ? 'Ve a la pestaña "⚡ Carga & Sincronización" para enlazar tu Google Sheet o subir tu archivo Excel.'
-                      : 'Los Setters deben sincronizar sus datos o puedes cargar datos globales.'}
+                      ? `Contacta al administrador para que sincronice los datos de tu grupo "${currentSession?.group || ''}".`
+                      : 'Usa el botón "Actualizar / Sincronizar Todo" o enlaza un Google Sheet para cargar datos.'}
                   </p>
-                  {role === 'setter' ? (
-                    <button className="btn-cyber-emerald" onClick={() => setActiveView('userportal')}>
-                      <UploadCloud size={15} /> Ir a Cargar Datos
-                    </button>
-                  ) : (
+                  {(role === 'admin' || role === 'gerencia') && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <button className="btn-cyber-primary" onClick={() => setIsGoogleSheetsModalOpen(true)}>Enlazar Google Sheets</button>
                       <button className="btn-cyber-ghost" onClick={() => setIsExcelModalOpen(true)}>Cargar Excel</button>

@@ -52,8 +52,8 @@ export default function Header({
           {/* CONTROLES FIJOS A LA DERECHA (POSICIÓN ESTÁNDAR SIEMPRE IDÉNTICA) */}
           <div className="header-user-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             
-            {/* Selector de Visualización / Auditoría por Canal (Exclusivo Administrador) */}
-            {role === 'admin' && setAdminChannelFilter && (
+            {/* Selector de Visualización / Auditoría por Canal (Admin y Gerencia) */}
+            {(role === 'admin' || role === 'gerencia') && setAdminChannelFilter && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: '#eff6ff',
@@ -172,16 +172,11 @@ export default function Header({
           </div>
         </div>
 
-        {/* FILA 2: BARRA DE HERRAMIENTAS EXCLUSIVA PARA ADMINISTRADOR */}
+        {/* FILA 2: BARRA DE HERRAMIENTAS — ADMIN (control total) */}
         {role === 'admin' && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: '10px',
-            borderTop: '1px solid #f1f5f9',
-            flexWrap: 'wrap',
-            gap: '8px'
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            paddingTop: '10px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '8px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginRight: '4px' }}>
@@ -222,29 +217,39 @@ export default function Header({
           </div>
         )}
 
-        {/* FILA 2: BARRA DE ACCIÓN PARA CALLERS */}
-        {role === 'caller' && (
+        {/* FILA 2: BARRA DE HERRAMIENTAS — GERENCIA (sincronización + datos, sin gestión de usuarios) */}
+        {role === 'gerencia' && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: '10px',
-            borderTop: '1px solid #f1f5f9',
-            flexWrap: 'wrap',
-            gap: '8px'
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            paddingTop: '10px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '8px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Panel del Call Team:
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#6d28d9', textTransform: 'uppercase', marginRight: '4px' }}>
+                🏆 Panel de Gerencia:
               </span>
               <button
                 className="btn-cyber-emerald"
                 onClick={onQuickSync}
                 disabled={isQuickSyncing}
-                style={{ padding: '5px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+                style={{ padding: '5px 13px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+                title="Actualizar y sincronizar todos los Google Sheets activos"
               >
                 <RefreshCw size={13} className={isQuickSyncing ? 'spin-icon' : ''} />
-                {isQuickSyncing ? 'Sincronizando...' : '🔄 Sincronizar Google Sheet (Callers)'}
+                {isQuickSyncing ? 'Sincronizando...' : '🔄 Actualizar / Sincronizar Todo'}
+              </button>
+              <button
+                className="btn-cyber-primary"
+                onClick={onOpenGoogleSheetsModal}
+                style={{ padding: '5px 12px', fontSize: '12px' }}
+              >
+                <Link2 size={13} /> Enlazar Google Sheets
+              </button>
+              <button
+                className="btn-cyber-ghost"
+                onClick={onOpenExcelModal}
+                style={{ padding: '5px 12px', fontSize: '12px' }}
+              >
+                <FileSpreadsheet size={13} /> Cargar Excel
               </button>
             </div>
           </div>
@@ -279,8 +284,8 @@ export default function Header({
       {/* ─── PESTAÑAS DE VISTAS (ALTURA Y POSICIÓN ESTÁNDAR) ─── */}
       <div className="view-tabs-cyber">
         
-        {/* TAB VISIÓN GENERAL (EXCLUSIVO ADMINISTRADOR EN CONSOLIDADO GLOBAL) */}
-        {role === 'admin' && adminChannelFilter === 'ALL' && (
+        {/* TAB VISIÓN GENERAL — Admin y Gerencia en consolidado global */}
+        {(role === 'admin' || role === 'gerencia') && adminChannelFilter === 'ALL' && (
           <button
             className="view-tab-btn-cyber"
             onClick={() => setActiveView('overview')}
@@ -292,81 +297,48 @@ export default function Header({
           </button>
         )}
 
-        {/* VISTAS DE SETTERS (EMBUDO, OPERATIVO, TRACKER, AGENDADOS, FUENTE DE DATOS) */}
-        {(role === 'setter' || (role === 'admin' && adminChannelFilter !== 'Callers')) && (
+        {/* VISTAS ANALYTICS: Setter ve solo su grupo; Admin/Gerencia ven según canal */}
+        {(role === 'setter' || ((role === 'admin' || role === 'gerencia') && adminChannelFilter !== 'Callers')) && (
           <>
-            {/* Embudo Comercial — Naranja ámbar */}
-            <button
-              className="view-tab-btn-cyber"
-              onClick={() => setActiveView('funnel')}
+            <button className="view-tab-btn-cyber" onClick={() => setActiveView('funnel')}
               style={activeView === 'funnel'
                 ? { background: 'linear-gradient(135deg, #d97706 0%, #ea580c 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(217,119,6,0.4)' }
-                : { background: 'linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)', color: '#b45309', borderColor: '#fde68a' }}
-            >
+                : { background: 'linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)', color: '#b45309', borderColor: '#fde68a' }}>
               <TrendingUp size={14} /> 1. Embudo Comercial
             </button>
 
-            {/* Análisis Operativo — Violeta */}
-            <button
-              className="view-tab-btn-cyber"
-              onClick={() => setActiveView('operative')}
+            <button className="view-tab-btn-cyber" onClick={() => setActiveView('operative')}
               style={activeView === 'operative'
                 ? { background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(124,58,237,0.4)' }
-                : { background: 'linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)', color: '#6d28d9', borderColor: '#ddd6fe' }}
-            >
+                : { background: 'linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)', color: '#6d28d9', borderColor: '#ddd6fe' }}>
               <Layers size={14} /> 2. Análisis Operativo
             </button>
 
-            {/* Tracker Leaderboard — Dorado */}
-            <button
-              className="view-tab-btn-cyber"
-              onClick={() => setActiveView('tracker')}
+            <button className="view-tab-btn-cyber" onClick={() => setActiveView('tracker')}
               style={activeView === 'tracker'
                 ? { background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(217,119,6,0.4)' }
-                : { background: 'linear-gradient(135deg, #fffbeb 0%, #fef9c3 100%)', color: '#92400e', borderColor: '#fcd34d' }}
-            >
+                : { background: 'linear-gradient(135deg, #fffbeb 0%, #fef9c3 100%)', color: '#92400e', borderColor: '#fcd34d' }}>
               <Trophy size={14} /> 3. Tracker Leaderboard
             </button>
 
-            {/* Lista de Agendados — Esmeralda */}
-            <button
-              className="view-tab-btn-cyber"
-              onClick={() => setActiveView('scheduled')}
+            <button className="view-tab-btn-cyber" onClick={() => setActiveView('scheduled')}
               style={activeView === 'scheduled'
                 ? { background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(5,150,105,0.4)' }
-                : { background: 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)', color: '#047857', borderColor: '#99f6e4' }}
-            >
+                : { background: 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)', color: '#047857', borderColor: '#99f6e4' }}>
               <CalendarCheck size={14} /> 4. Lista de Agendados
             </button>
 
-            {/* Fuente de Datos — Azul acero */}
-            <button
-              className="view-tab-btn-cyber"
-              onClick={() => setActiveView('datasource')}
+            <button className="view-tab-btn-cyber" onClick={() => setActiveView('datasource')}
               style={activeView === 'datasource'
                 ? { background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(2,132,199,0.4)' }
-                : { background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', color: '#0369a1', borderColor: '#7dd3fc' }}
-            >
+                : { background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', color: '#0369a1', borderColor: '#7dd3fc' }}>
               <Database size={14} /> 5. Fuente de Datos
             </button>
-
-            {/* TAB DE CARGA PARA SETTER (Al final después de Fuente de Datos) */}
-            {role === 'setter' && (
-              <button
-                className="view-tab-btn-cyber"
-                onClick={() => setActiveView('userportal')}
-                style={activeView === 'userportal'
-                  ? { background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)', color: '#ffffff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(5,150,105,0.4)' }
-                  : { background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)', color: '#059669', borderColor: '#a7f3d0' }}
-              >
-                <UploadCloud size={14} /> ⚡ Carga & Sincronización
-              </button>
-            )}
           </>
         )}
 
-        {/* 6. CALLER SCORECARD — Rosa violeta (Visible para Callers, o Admin en Consolidado Global o Canal C - Call Team) */}
-        {(role === 'caller' || (role === 'admin' && (adminChannelFilter === 'ALL' || adminChannelFilter === 'Callers'))) && (
+        {/* 6. CALLER SCORECARD — Callers, Admin y Gerencia (global o canal callers) */}
+        {(role === 'caller' || ((role === 'admin' || role === 'gerencia') && (adminChannelFilter === 'ALL' || adminChannelFilter === 'Callers'))) && (
           <button
             className="view-tab-btn-cyber"
             onClick={() => setActiveView('supervisor')}

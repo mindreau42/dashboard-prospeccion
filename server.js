@@ -219,7 +219,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── 1. AUTH: SINGLE SESSION LOGIN (POST /api/auth/login) ──
+  // ── 1. AUTH: LOGIN — Multi-session allowed (POST /api/auth/login) ──
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -232,11 +232,11 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // Generate strong session token
+        // Generate token — multi-session: we just issue a new token, no eviction
         const sessionToken = 'sess_' + crypto.randomBytes(24).toString('hex');
         const now = Date.now();
 
-        // STRICT CONCURRENCY: Replace any previous active session for this user
+        // Store latest session reference (for audit/logout use only)
         activeSessions.set(userId, {
           sessionToken,
           username,
@@ -252,7 +252,7 @@ const server = http.createServer(async (req, res) => {
           sessionToken,
           userId,
           username,
-          message: 'Sesión única inicializada exitosamente.'
+          message: 'Sesión iniciada exitosamente.'
         }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -262,41 +262,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── 2. AUTH: HEARTBEAT & SINGLE SESSION VALIDATION (POST /api/auth/heartbeat) ──
+  // ── 2. AUTH: HEARTBEAT — Always 200 OK, multi-session (POST /api/auth/heartbeat) ──
   if (pathname === '/api/auth/heartbeat' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
       try {
-        const { userId, sessionToken } = JSON.parse(body || '{}');
-        if (!userId || !sessionToken) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, code: 'INVALID_CREDENTIALS', message: 'Credenciales incompletas.' }));
-          return;
+        const { userId } = JSON.parse(body || '{}');
+        // Update heartbeat timestamp if session exists
+        if (userId && activeSessions.has(userId)) {
+          const s = activeSessions.get(userId);
+          s.lastHeartbeat = Date.now();
+          activeSessions.set(userId, s);
         }
-
-        const currentSession = activeSessions.get(userId);
-
-        // Check if session exists and token matches
-        if (!currentSession || currentSession.sessionToken !== sessionToken) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            ok: false,
-            code: 'SESSION_TERMINATED',
-            message: 'Tu sesión fue cerrada porque se inició sesión en otro dispositivo o navegador.'
-          }));
-          return;
-        }
-
-        // Update heartbeat
-        currentSession.lastHeartbeat = Date.now();
-        activeSessions.set(userId, currentSession);
-
+        // Always respond OK — no forced logout for concurrent sessions
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, active: true }));
       } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, active: true }));
       }
     });
     return;

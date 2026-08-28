@@ -202,7 +202,7 @@ export default function UserManagementModal({
         role,
         group: assignedGroup,
         callerKey: role === 'caller' ? 'Caller 1' : null,
-        avatar: role === 'admin' ? '👑' : role === 'caller' ? '📞' : '🎯',
+        avatar: role === 'admin' ? '👑' : role === 'gerencia' ? '🏆' : role === 'caller' ? '📞' : '🎯',
         createdAt: new Date().toLocaleDateString('es-MX')
       };
       updatedList = [...userList, newUser];
@@ -231,6 +231,12 @@ export default function UserManagementModal({
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
           <Crown size={11} /> ADMIN
+        </span>
+      );
+    } else if (r === 'gerencia') {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '10px', background: '#f5f3ff', color: '#5b21b6', border: '1px solid #c4b5fd' }}>
+          🏆 GERENCIA
         </span>
       );
     } else if (r === 'caller') {
@@ -399,9 +405,10 @@ export default function UserManagementModal({
                       borderRadius: '6px', padding: '8px 10px', color: '#0f172a', fontSize: '12.5px', outline: 'none', fontWeight: 700
                     }}
                   >
-                    <option value="setter">Setter — 5 funciones de prospección</option>
+                    <option value="setter">Setter — Visualización exclusiva de su grupo</option>
                     <option value="caller">Caller — Exclusivo: Caller Scorecard</option>
-                    <option value="admin">Admin — Control total de todas las vistas</option>
+                    <option value="gerencia">Gerencia — Sincronización + Visualización Total (sin gestión de usuarios)</option>
+                    <option value="admin">Admin — Control total de todas las vistas y usuarios</option>
                   </select>
                   <span style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px', display: 'block' }}>
                     Define las vistas y módulos permitidos
