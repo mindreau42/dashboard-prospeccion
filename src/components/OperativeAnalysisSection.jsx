@@ -293,7 +293,9 @@ export default function OperativeAnalysisSection({ reports = [] }) {
       countryMetrics.diagnosticos[cNorm] = (countryMetrics.diagnosticos[cNorm] || 0) + Number(r.diagnosticos || 0);
     }
 
-    // Agendamientos por país (solo de filas con meta cumplida "Sí")
+    // Agendamientos por país (unificado con el resto de módulos)
+    const agendVal = Number(r.agendamientos || 0);
+    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
     const isSi = Boolean(
       r.cumplioMeta && (
         String(r.cumplioMeta).toLowerCase() === 'sí' ||
@@ -305,10 +307,11 @@ export default function OperativeAnalysisSection({ reports = [] }) {
       !String(r.cumplioMeta).toLowerCase().startsWith('no')
     );
 
-    if (isSi || Number(r.agendamientos || 0) > 0) {
+    const effectiveAgend = agendVal > 0 ? agendVal : (hasLead || isSi ? 1 : 0);
+    if (effectiveAgend > 0) {
       const agendCountryRaw = r.agendamientoPorPais || r.pais || 'Colombia';
       const aCountry = normalizeCountry(agendCountryRaw);
-      countryMetrics.agendamientos[aCountry] = (countryMetrics.agendamientos[aCountry] || 0) + (Number(r.agendamientos) || 1);
+      countryMetrics.agendamientos[aCountry] = (countryMetrics.agendamientos[aCountry] || 0) + effectiveAgend;
     }
   });
 

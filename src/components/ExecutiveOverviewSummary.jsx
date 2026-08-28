@@ -230,10 +230,18 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
   const totalRespuestas = reports.reduce((a, r) =>
     a + Number(r.respuestasM1 || 0) + Number(r.respuestasM2 || 0) + Number(r.respuestasM3 || 0), 0);
   const totalDiagnosticos = reports.reduce((a, r) => a + Number(r.diagnosticos || 0), 0);
-  const totalAgendamientos = reports.reduce((a, r) => a + Number(r.agendamientos || 0), 0);
 
-  // Show Up: numerador = filas con asistioLead = Sí (17)
-  // Denominador = suma de Sí (17) + No (10) de la pregunta "¿Asistió al Booking?" (los Pendientes no cuentan)
+  // Agendamientos unificado (suma de citas o filas válidas con lead agendado)
+  const totalAgendamientos = reports.reduce((a, r) => {
+    const v = Number(r.agendamientos || 0);
+    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
+    const isSi = Boolean(
+      r.cumplioMeta && String(r.cumplioMeta).toLowerCase().startsWith('si') && !String(r.cumplioMeta).toLowerCase().startsWith('no')
+    );
+    return a + (v > 0 ? v : (hasLead || isSi ? 1 : 0));
+  }, 0);
+
+  // Show Up: numerador = filas con asistioLead = Sí
   const totalAsistieronBooking = reports.filter(r => {
     const st = (r.asistioLead || '').toLowerCase().trim();
     return (st === 'sí' || st === 'si' || st.startsWith('si') || st.startsWith('sí') || st === '1' || st === 'true') && !st.startsWith('no') && !st.includes('pendiente');
@@ -244,8 +252,8 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
     return st.startsWith('no') && !st.includes('pendiente');
   }).length;
 
-  // Denominador: suma de Sí y No de "¿Asistió al Booking?"
-  const totalAgendados = totalAsistieronBooking + totalAsistidosNo;
+  // Denominador consistente con el total de agendamientos reales
+  const totalAgendados = Math.max(totalAgendamientos, totalAsistieronBooking + totalAsistidosNo);
 
   const tasaAceptacion = totalEnviadas > 0 ? ((totalAceptadas / totalEnviadas) * 100).toFixed(1) : '0.0';
   const tasaRespuesta = totalAceptadas > 0 ? ((totalRespuestas / totalAceptadas) * 100).toFixed(1) : '0.0';

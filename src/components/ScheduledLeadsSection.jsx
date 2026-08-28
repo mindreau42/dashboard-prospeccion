@@ -237,9 +237,9 @@ export default function ScheduledLeadsSection({ reports = [] }) {
             <CalendarCheck size={20} />
           </div>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>LEADS AGENDADOS</div>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#059669' }}>{totalScheduled}</div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Reuniones en agenda</div>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>LEADS ASISTIDOS</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#059669' }}>{asistidosCount}</div>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>Asistencias confirmadas</div>
           </div>
         </div>
 

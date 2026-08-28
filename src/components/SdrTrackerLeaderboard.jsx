@@ -86,8 +86,9 @@ export default function SdrTrackerLeaderboard({ reports = [] }) {
       ) &&
       !String(r.cumplioMeta).toLowerCase().startsWith('no')
     );
-    // Agendamientos: solo los SI (cumplió meta)
-    const agend = cumplio ? (Number(r.agendamientos) || 1) : 0;
+    const agendVal = Number(r.agendamientos || 0);
+    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
+    const agend = agendVal > 0 ? agendVal : ((cumplio || hasLead) ? 1 : 0);
     const asist = Number(r.asistidos !== undefined ? r.asistidos : (isAsistSi ? 1 : 0));
     const showUp = agend > 0 ? Math.round((asist / agend) * 100) : (asist > 0 ? 100 : 0);
 

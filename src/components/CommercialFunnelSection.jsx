@@ -189,8 +189,15 @@ export default function CommercialFunnelSection({ reports = [] }) {
 
   const totalDiagnosticos = filteredReports.reduce((a, r) => a + Number(r.diagnosticos || 0), 0);
   
-  // Agendamientos
-  const totalAgendamientos = filteredReports.reduce((a, r) => a + Number(r.agendamientos || 0), 0);
+  // Agendamientos unificado (suma de citas o filas válidas con lead agendado)
+  const totalAgendamientos = filteredReports.reduce((a, r) => {
+    const v = Number(r.agendamientos || 0);
+    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
+    const isSi = Boolean(
+      r.cumplioMeta && String(r.cumplioMeta).toLowerCase().startsWith('si') && !String(r.cumplioMeta).toLowerCase().startsWith('no')
+    );
+    return a + (v > 0 ? v : (hasLead || isSi ? 1 : 0));
+  }, 0);
 
   // Conversion Rates
   const tasaAceptacion = totalEnviadas > 0 ? ((totalAceptadas / totalEnviadas) * 100).toFixed(1) : '0';
