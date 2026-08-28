@@ -263,7 +263,7 @@ export default function App() {
               setGroupsData(prev => {
                 const currentUrl = (prev?.['Setters Oficiales']?.url || '').trim();
                 if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
-                return {
+                const next = {
                   ...prev,
                   'Setters Oficiales': {
                     ...prev['Setters Oficiales'],
@@ -273,6 +273,9 @@ export default function App() {
                     lastSync: now
                   }
                 };
+                // ── PERSIST to server so all users see fresh data ──
+                saveStateToServer({ groupsData: next });
+                return next;
               });
             }
           })
@@ -290,7 +293,7 @@ export default function App() {
               setGroupsData(prev => {
                 const currentUrl = (prev?.['Setters Aspirantes']?.url || '').trim();
                 if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
-                return {
+                const next = {
                   ...prev,
                   'Setters Aspirantes': {
                     ...prev['Setters Aspirantes'],
@@ -300,6 +303,9 @@ export default function App() {
                     lastSync: now
                   }
                 };
+                // ── PERSIST to server so all users see fresh data ──
+                saveStateToServer({ groupsData: next });
+                return next;
               });
             }
           })
@@ -317,7 +323,7 @@ export default function App() {
                 setCallersData(prev => {
                   const currentUrl = (prev?.[callerKey]?.sheetUrl || '').trim();
                   if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
-                  return {
+                  const next = {
                     ...prev,
                     [callerKey]: {
                       ...prev[callerKey],
@@ -327,6 +333,9 @@ export default function App() {
                       lastSync: now
                     }
                   };
+                  // ── PERSIST to server so all users see fresh data ──
+                  saveStateToServer({ callersData: next });
+                  return next;
                 });
               }
             })
@@ -334,7 +343,7 @@ export default function App() {
         }
       });
     } catch (_) {}
-  }, []);
+  }, [saveStateToServer]);
 
   useEffect(() => {
     // 1. Run immediately on mount

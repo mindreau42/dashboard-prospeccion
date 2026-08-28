@@ -150,8 +150,26 @@ export async function fetchGoogleSheetData(sheetUrl) {
   }
 
   const { spreadsheetId, gid, directCsvUrl } = extracted;
+  const cacheBuster = `_t=${Date.now()}`;
 
-  // ── ESTRATEGIA 1: opensheet.elk.sh (más rápido ~1s, funciona con "compartido con el enlace") ──
+  // ── ESTRATEGIA 1: JSONP directo via Google gviz (datos EN TIEMPO REAL, sin caché) ──
+  // Este método consulta directamente la API oficial de Google sin intermediarios.
+  if (!directCsvUrl && spreadsheetId && typeof document !== 'undefined') {
+    try {
+      const jsonpRows = await fetchViaJsonp(spreadsheetId, gid);
+      if (Array.isArray(jsonpRows)) {
+        if (jsonpRows.length === 0) {
+          return { records: [], rowCount: 0, duplicatesRemoved: 0, totalRawRows: 0, url: sheetUrl, isEmpty: true };
+        }
+        const { records: parsedRecords, duplicatesRemoved } = mapRowsToProspectingRecordsWithDedup(jsonpRows);
+        if (parsedRecords.length > 0) {
+          return { records: parsedRecords, rowCount: parsedRecords.length, duplicatesRemoved, totalRawRows: jsonpRows.length, url: sheetUrl };
+        }
+      }
+    } catch (_) { /* fall through to next strategy */ }
+  }
+
+  // ── ESTRATEGIA 2: opensheet.elk.sh (respaldo — puede tener caché de hasta 30 min) ──
   if (!directCsvUrl && spreadsheetId) {
     const opensheetResult = await tryOpensheet(spreadsheetId, sheetUrl);
     if (opensheetResult !== null) return opensheetResult;
@@ -162,33 +180,19 @@ export async function fetchGoogleSheetData(sheetUrl) {
     if (opensheetRetry !== null) return opensheetRetry;
   }
 
-  // ── ESTRATEGIA 2: JSONP directo via Google gviz (funciona si el Sheet está "publicado en web") ──
-  if (!directCsvUrl && spreadsheetId && typeof document !== 'undefined') {
-    try {
-      const jsonpRows = await fetchViaJsonp(spreadsheetId, gid);
-      if (Array.isArray(jsonpRows)) {
-        if (jsonpRows.length === 0) {
-          return { records: [], rowCount: 0, duplicatesRemoved: 0, totalRawRows: 0, url: sheetUrl, isEmpty: true };
-        }
-        const { records: parsedRecords, duplicatesRemoved } = mapRowsToProspectingRecordsWithDedup(jsonpRows);
-        return { records: parsedRecords, rowCount: parsedRecords.length, duplicatesRemoved, totalRawRows: jsonpRows.length, url: sheetUrl };
-      }
-    } catch (_) { /* fall through */ }
-  }
-
   // ── ESTRATEGIA 3: Proxies alternativos (corsproxy, allorigins) ──
   const candidateUrls = [];
 
   if (directCsvUrl) {
-    candidateUrls.push({ url: directCsvUrl, type: 'csv' });
-    candidateUrls.push({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(directCsvUrl)}`, type: 'csv' });
+    candidateUrls.push({ url: `${directCsvUrl}&${cacheBuster}`, type: 'csv' });
+    candidateUrls.push({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(directCsvUrl + '&' + cacheBuster)}`, type: 'csv' });
   } else if (spreadsheetId) {
     const gvizBase = gid
-      ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`
-      : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`;
+      ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}&${cacheBuster}`
+      : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&${cacheBuster}`;
     const exportBase = gid
-      ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`
-      : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+      ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}&${cacheBuster}`
+      : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&${cacheBuster}`;
 
     candidateUrls.push({ url: `https://corsproxy.io/?url=${encodeURIComponent(gvizBase)}`, type: 'csv' });
     candidateUrls.push({ url: `https://corsproxy.io/?url=${encodeURIComponent(exportBase)}`, type: 'csv' });
@@ -205,7 +209,7 @@ export async function fetchGoogleSheetData(sheetUrl) {
       const response = await fetch(item.url, {
         method: 'GET',
         signal: controller.signal,
-        headers: { 'Accept': 'text/csv,text/plain,*/*' }
+        headers: { 'Accept': 'text/csv,text/plain,*/*', 'Cache-Control': 'no-cache' }
       });
       clearTimeout(timeoutId);
       if (!response.ok) continue;
@@ -354,18 +358,19 @@ export async function fetchSupervisorSheetData(sheetUrl = 'https://docs.google.c
     }
   }
 
+  const cb = `_t=${Date.now()}`;
   const candidateUrls = [];
   if (gid) {
-    candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`);
-    candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`);
+    candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}&${cb}`);
+    candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}&${cb}`);
   }
-  candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`);
-  candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`);
+  candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&${cb}`);
+  candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&${cb}`);
   candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`);
 
   const targetUrl = gid
-    ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`
-    : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`;
+    ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}&${cb}`
+    : `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&${cb}`;
 
   candidateUrls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
   candidateUrls.push(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
