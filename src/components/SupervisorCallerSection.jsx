@@ -299,14 +299,13 @@ export default function SupervisorCallerSection({
     return Object.values(groups).sort((a, b) => parseSpanishDate(b.fecha) - parseSpanishDate(a.fecha));
   }, [displayScorecardReports, displayCallerRecords]);
 
-  // Si hay más de 1 fecha, omitimos la fecha actual más reciente (ej. 25-ago) para medir exactamente "Ayer" (ej. 24-ago) y días completados anteriores
+  // ── Historial diario ordenado del más reciente (Hoy) al más antiguo ──
   const dailyHistoryList = useMemo(() => {
-    if (allDailyList.length <= 1) return allDailyList;
-    return allDailyList.slice(1);
+    return allDailyList;
   }, [allDailyList]);
 
-  const yesterdayDateLabel = dailyHistoryList[0]?.fecha || '';
-  const yesterdayDaily = dailyHistoryList[0] || { llamadasDiarias: 0, contactosUnicos: 0, fuentesConteo: 0, mensajesEnviados: 0, comunidadSkool: 0, enSeguimiento: 0, citasAgendadas: 0 };
+  const todayDateLabel = dailyHistoryList[0]?.fecha || '';
+  const todayDaily = dailyHistoryList[0] || { llamadasDiarias: 0, contactosUnicos: 0, fuentesConteo: 0, mensajesEnviados: 0, comunidadSkool: 0, enSeguimiento: 0, citasAgendadas: 0 };
 
   // Ordenar registros de más reciente a más antiguo (fecha descendente)
   const sortedCallerRecords = useMemo(() => {
@@ -927,7 +926,7 @@ export default function SupervisorCallerSection({
                               {dailyHistoryList.slice(0, 14).map((row, i) => (
                                 <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i === 0 ? `${accentBg}` : 'transparent' }}>
                                   <td style={{ padding: '4px 6px', color: '#334155', fontWeight: i === 0 ? 800 : 600 }}>
-                                    {row.fecha} {i === 0 && <span style={{ fontSize: '9.5px', background: accentBorder, color, padding: '1px 4px', borderRadius: '3px', fontWeight: 800, marginLeft: '3px' }}>Ayer</span>}
+                                    {row.fecha} {i === 0 && <span style={{ fontSize: '9.5px', background: accentBorder, color, padding: '1px 4px', borderRadius: '3px', fontWeight: 800, marginLeft: '3px' }}>Hoy</span>}
                                   </td>
                                   <td style={{ padding: '4px 6px', textAlign: 'right', color: topBorder, fontWeight: i === 0 ? 900 : 700 }}>
                                     {Number(row[field] || 0).toLocaleString()}
