@@ -14,6 +14,9 @@ import ExcelUploadModal from './components/ExcelUploadModal';
 import GoogleSheetsModal from './components/GoogleSheetsModal';
 import UserManagementModal from './components/UserManagementModal';
 import UserProfileModal from './components/UserProfileModal';
+import packageJson from '../package.json';
+
+const APP_VERSION = `v${packageJson.version}`;
 
 import { INITIAL_MOCK_REPORTS } from './data/mockData';
 import { INITIAL_SUPERVISOR_CALLER, INITIAL_SUPERVISOR_SCORECARD } from './data/mockSupervisorData';
@@ -959,7 +962,7 @@ export default function App() {
             fontSize: '11px',
             letterSpacing: '0.02em'
           }}>
-            v3.0.0
+            {APP_VERSION}
           </span>
         </div>
       </footer>

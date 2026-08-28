@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import { getLockoutStatus, recordFailedAttempt, clearFailedAttempts, sanitizeInput, verifyPassword } from '../utils/security';
+import packageJson from '../../package.json';
+
+const APP_VERSION = `v${packageJson.version}`;
 
 export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '' }) {
   const [username, setUsername] = useState('');
@@ -382,7 +385,7 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
             <span>Todos los derechos reservados.</span>
             <span style={{ color: '#cbd5e1' }}>•</span>
             <span style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 800, color: '#475569', fontSize: '10.5px' }}>
-              v3.0.0
+              {APP_VERSION}
             </span>
           </p>
         </div>
