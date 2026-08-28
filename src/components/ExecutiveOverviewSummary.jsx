@@ -231,15 +231,8 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
     a + Number(r.respuestasM1 || 0) + Number(r.respuestasM2 || 0) + Number(r.respuestasM3 || 0), 0);
   const totalDiagnosticos = reports.reduce((a, r) => a + Number(r.diagnosticos || 0), 0);
 
-  // Agendamientos unificado (suma de citas o filas válidas con lead agendado)
-  const totalAgendamientos = reports.reduce((a, r) => {
-    const v = Number(r.agendamientos || 0);
-    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
-    const isSi = Boolean(
-      r.cumplioMeta && String(r.cumplioMeta).toLowerCase().startsWith('si') && !String(r.cumplioMeta).toLowerCase().startsWith('no')
-    );
-    return a + (v > 0 ? v : (hasLead || isSi ? 1 : 0));
-  }, 0);
+  // Agendamientos estrictos desde la celda de la hoja
+  const totalAgendamientos = reports.reduce((a, r) => a + Number(r.agendamientos || 0), 0);
 
   // Show Up: numerador = filas con asistioLead = Sí
   const totalAsistieronBooking = reports.filter(r => {
@@ -252,7 +245,7 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
     return st.startsWith('no') && !st.includes('pendiente');
   }).length;
 
-  // Denominador consistente con el total de agendamientos reales
+  // Denominador: total de agendamientos reales registrados
   const totalAgendados = Math.max(totalAgendamientos, totalAsistieronBooking + totalAsistidosNo);
 
   const tasaAceptacion = totalEnviadas > 0 ? ((totalAceptadas / totalEnviadas) * 100).toFixed(1) : '0.0';

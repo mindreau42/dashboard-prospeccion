@@ -293,25 +293,12 @@ export default function OperativeAnalysisSection({ reports = [] }) {
       countryMetrics.diagnosticos[cNorm] = (countryMetrics.diagnosticos[cNorm] || 0) + Number(r.diagnosticos || 0);
     }
 
-    // Agendamientos por país (unificado con el resto de módulos)
+    // Agendamientos por país (estricto de la columna agendamientos)
     const agendVal = Number(r.agendamientos || 0);
-    const hasLead = Boolean(r.nombreLeadAgendado && String(r.nombreLeadAgendado).trim().length > 2 && !['n/a','-','—','ninguno','no','0'].includes(String(r.nombreLeadAgendado).trim().toLowerCase()));
-    const isSi = Boolean(
-      r.cumplioMeta && (
-        String(r.cumplioMeta).toLowerCase() === 'sí' ||
-        String(r.cumplioMeta).toLowerCase() === 'si' ||
-        String(r.cumplioMeta).toLowerCase().startsWith('si') ||
-        String(r.cumplioMeta).toLowerCase().startsWith('sí') ||
-        String(r.cumplioMeta) === '1'
-      ) &&
-      !String(r.cumplioMeta).toLowerCase().startsWith('no')
-    );
-
-    const effectiveAgend = agendVal > 0 ? agendVal : (hasLead || isSi ? 1 : 0);
-    if (effectiveAgend > 0) {
+    if (agendVal > 0) {
       const agendCountryRaw = r.agendamientoPorPais || r.pais || 'Colombia';
       const aCountry = normalizeCountry(agendCountryRaw);
-      countryMetrics.agendamientos[aCountry] = (countryMetrics.agendamientos[aCountry] || 0) + effectiveAgend;
+      countryMetrics.agendamientos[aCountry] = (countryMetrics.agendamientos[aCountry] || 0) + agendVal;
     }
   });
 
