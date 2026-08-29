@@ -248,7 +248,7 @@ export default function OperativeAnalysisSection({ reports = [] }) {
     if (l === 'nicaragua') return 'Nicaragua';
     if (l === 'costa rica') return 'Costa Rica';
     if (l.includes('dominicana')) return 'República Dominicana';
-    if (l === 'todos' || l === 'general') return 'Todos';
+    if (l === 'todos' || l === 'general') return 'Otros';
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
@@ -266,11 +266,8 @@ export default function OperativeAnalysisSection({ reports = [] }) {
       parts.forEach(part => {
         const item = part.trim();
         if (!item) return;
-        // Use global regex to extract ALL country-number pairs in the chunk
-        // This handles both "Colombia: 3" and "Colombia: 3 Panamá: 1" (no comma)
         const pairRegex = /([a-zA-ZáéíóúÁÉÍÓÚñÑ.\s]+?)(?::\s*|\s+)(\d+)/g;
         let m;
-        let foundInChunk = false;
         while ((m = pairRegex.exec(item)) !== null) {
           const rawC = m[1].trim().replace(/^[,\s]+|[,\s]+$/g, '');
           if (rawC && rawC.length >= 2) {
@@ -279,7 +276,6 @@ export default function OperativeAnalysisSection({ reports = [] }) {
             if (val > 0) {
               countryMetrics.diagnosticos[cNorm] = (countryMetrics.diagnosticos[cNorm] || 0) + val;
               parsedAny = true;
-              foundInChunk = true;
             }
           }
         }
@@ -305,10 +301,8 @@ export default function OperativeAnalysisSection({ reports = [] }) {
   const activeMap = countryMetrics[countryMetricTab] || countryMetrics.diagnosticos;
   const activeEntries = Object.entries(activeMap).filter(([_, val]) => val > 0);
 
-  // Ordenar países de mayor a menor
-  const sortedCountryEntries = activeEntries
-    .filter(([c]) => c.toLowerCase() !== 'todos' && c.toLowerCase() !== 'general')
-    .sort((a, b) => b[1] - a[1]);
+  // Ordenar países de mayor a menor (sin descartar ningún país)
+  const sortedCountryEntries = activeEntries.sort((a, b) => b[1] - a[1]);
 
   const countryKeys = sortedCountryEntries.map(([c]) => c);
   const activeCountryValues = sortedCountryEntries.map(([_, v]) => v);
@@ -412,19 +406,23 @@ export default function OperativeAnalysisSection({ reports = [] }) {
 
   // Agrupamos por SDR para tomar el reporte más reciente de cada cuenta única
   const latestBySdr = {};
-  filteredReports.forEach(r => {
+  filteredReports.forEach((r, idx) => {
     const sdrName = r.sdr || r.nombre || '';
     const norm = normalizeSdrName(sdrName);
     if (!norm || norm.length < 3 || norm.includes('agendad') || norm.includes('desconocid')) return;
     
-    if (!latestBySdr[norm]) {
-      latestBySdr[norm] = r;
-    } else {
-      const prevDate = latestBySdr[norm].timestamp || latestBySdr[norm].fecha || '';
-      const currDate = r.timestamp || r.fecha || '';
-      if (currDate >= prevDate) {
-        latestBySdr[norm] = r;
-      }
+    if (r.estadoWaalaxy && String(r.estadoWaalaxy).trim().length > 0) {
+      latestBySdr[norm] = {
+        sdr: sdrName,
+        estadoWaalaxy: r.estadoWaalaxy,
+        idx
+      };
+    } else if (!latestBySdr[norm]) {
+      latestBySdr[norm] = {
+        sdr: sdrName,
+        estadoWaalaxy: 'Activo',
+        idx
+      };
     }
   });
 

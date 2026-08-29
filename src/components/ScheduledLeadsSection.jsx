@@ -250,7 +250,7 @@ export default function ScheduledLeadsSection({ reports = [] }) {
           <div>
             <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>TASA DE ASISTENCIA</div>
             <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563eb' }}>{showUpRate}%</div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>{asistidosCount} de {totalScheduled} asistidos</div>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>{asistidosCount} de {totalScheduled} Agendados</div>
           </div>
         </div>
 

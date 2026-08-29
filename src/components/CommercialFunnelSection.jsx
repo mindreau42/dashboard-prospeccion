@@ -774,7 +774,7 @@ export default function CommercialFunnelSection({ reports = [] }) {
                         {showUpRateCalc}%
                       </div>
                       <div style={{ fontSize: '11px', color: suColor, fontWeight: 700, marginTop: '2px' }}>
-                        {totalAsistieronBooking} de {totalAgendados} asistidos
+                        {totalAsistieronBooking} de {totalAgendados} Agendados
                       </div>
                     </div>
                   </div>

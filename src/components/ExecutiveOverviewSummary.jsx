@@ -266,24 +266,25 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
   };
 
   const sdrLatestAccountMap = {};
-  reports.forEach(r => {
+  reports.forEach((r, idx) => {
     const sdrName = r.sdr || r.nombre || '';
     const norm = normalizeSdrName(sdrName);
     if (!norm || norm.length < 3 || norm.includes('agendad') || norm.includes('desconocid')) return;
 
-    if (!sdrLatestAccountMap[norm]) {
-      sdrLatestAccountMap[norm] = r;
-    } else {
-      const prevDate = sdrLatestAccountMap[norm].timestamp || '';
-      const currDate = r.timestamp || '';
-      // Si el registro actual tiene estado de Waalaxy explícito, actualizamos
-      if (r.estadoWaalaxy) {
-        if (!sdrLatestAccountMap[norm].estadoWaalaxy || currDate >= prevDate) {
-          sdrLatestAccountMap[norm] = r;
-        }
-      } else if (!sdrLatestAccountMap[norm].estadoWaalaxy && currDate >= prevDate) {
-        sdrLatestAccountMap[norm] = r;
-      }
+    if (r.estadoWaalaxy && String(r.estadoWaalaxy).trim().length > 0) {
+      sdrLatestAccountMap[norm] = {
+        sdr: sdrName,
+        estadoWaalaxy: r.estadoWaalaxy,
+        timestamp: r.timestamp || '',
+        idx
+      };
+    } else if (!sdrLatestAccountMap[norm]) {
+      sdrLatestAccountMap[norm] = {
+        sdr: sdrName,
+        estadoWaalaxy: 'Activo',
+        timestamp: r.timestamp || '',
+        idx
+      };
     }
   });
 
@@ -599,7 +600,7 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
                     {showUpPct}%
                   </div>
                   <div style={{ fontSize: '10.5px', color: showUpColor, fontWeight: 700, marginTop: '2px' }}>
-                    {totalAsistieronBooking} de {totalAgendados} asistidos
+                    {totalAsistieronBooking} de {totalAgendados} Agendados
                   </div>
                 </div>
               </div>
