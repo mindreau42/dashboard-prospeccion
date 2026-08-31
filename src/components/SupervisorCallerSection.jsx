@@ -191,7 +191,7 @@ export default function SupervisorCallerSection({
   const parseSpanishDate = (dateStr) => {
     if (!dateStr) return 0;
     const str = String(dateStr).trim().toLowerCase();
-    const dmyMatch = str.match(/^(\d{1,2})[-/]([a-z]{3}|\d{1,2})[-/](\d{2,4})$/i);
+    const dmyMatch = str.match(/^(\d{1,2})[-/]([a-z]{3}|\d{1,2})[-/](\d{2,4})/i);
     if (dmyMatch) {
       const day = parseInt(dmyMatch[1], 10);
       const mStr = dmyMatch[2].toLowerCase();
@@ -307,13 +307,15 @@ export default function SupervisorCallerSection({
   const todayDateLabel = dailyHistoryList[0]?.fecha || '';
   const todayDaily = dailyHistoryList[0] || { llamadasDiarias: 0, contactosUnicos: 0, fuentesConteo: 0, mensajesEnviados: 0, comunidadSkool: 0, enSeguimiento: 0, citasAgendadas: 0 };
 
-  // Ordenar registros de más reciente a más antiguo (fecha descendente)
+  // Ordenar registros de más reciente a más antiguo (última información ingresada en la parte superior)
   const sortedCallerRecords = useMemo(() => {
-    return [...displayCallerRecords].sort((a, b) => {
-      const timeDiff = parseSpanishDate(b.fecha) - parseSpanishDate(a.fecha);
-      if (timeDiff !== 0) return timeDiff;
-      return 0;
-    });
+    return [...displayCallerRecords]
+      .map((r, originalIdx) => ({ ...r, _origIdx: originalIdx }))
+      .sort((a, b) => {
+        const timeDiff = parseSpanishDate(b.fecha) - parseSpanishDate(a.fecha);
+        if (timeDiff !== 0) return timeDiff;
+        return b._origIdx - a._origIdx; // Última fila ingresada va en la parte superior
+      });
   }, [displayCallerRecords]);
 
   // Filtered Caller Records by Search, Status and Source

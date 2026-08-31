@@ -931,12 +931,7 @@ export default function App() {
                   {activeView === 'operative'   && <OperativeAnalysisSection reports={baseReports} />}
                   {activeView === 'tracker'     && <SdrTrackerLeaderboard reports={baseReports} />}
                   {activeView === 'scheduled'   && <ScheduledLeadsSection reports={baseReports} />}
-                  {activeView === 'datasource'  && (
-                    <>
-                      <ProspectingTable reports={baseReports} />
-                      <DataSourceSection reports={baseReports} />
-                    </>
-                  )}
+                  {activeView === 'datasource'  && <DataSourceSection reports={baseReports} />}
                 </>
               )
             )}

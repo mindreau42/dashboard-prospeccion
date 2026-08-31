@@ -122,24 +122,48 @@ export default function ScheduledLeadsSection({ reports = [] }) {
     setSelectedDateTo('');
   };
 
-  const filtered = scheduledReports.filter(r => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      (r.nombreLeadAgendado || '').toLowerCase().includes(term) ||
-      (r.perfilLeadAgendado || '').toLowerCase().includes(term) ||
-      (r.pais || '').toLowerCase().includes(term) ||
-      (r.agendamientoPorPais || '').toLowerCase().includes(term) ||
-      (r._originalGroup || '').toLowerCase().includes(term) ||
-      (r.linkPerfil || '').toLowerCase().includes(term) ||
-      (r.sdr || '').toLowerCase().includes(term);
+  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+  const parseSpanishDate = (dateStr) => {
+    if (!dateStr) return 0;
+    const str = String(dateStr).trim().toLowerCase();
+    const dmyMatch = str.match(/^(\d{1,2})[-/]([a-z]{3}|\d{1,2})[-/](\d{2,4})/i);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const mStr = dmyMatch[2].toLowerCase();
+      const month = monthsMap[mStr] !== undefined ? monthsMap[mStr] : (parseInt(mStr, 10) - 1);
+      let year = parseInt(dmyMatch[3], 10);
+      if (year < 100) year += 2000;
+      return new Date(year, month, day).getTime();
+    }
+    const isoDate = Date.parse(str);
+    return isNaN(isoDate) ? 0 : isoDate;
+  };
 
-    const sdrMatch = selectedSdr === 'Todos' || (r.sdr || '').trim().toLowerCase() === selectedSdr.trim().toLowerCase();
-    const groupMatch = selectedGroup === 'Todos' || (r._originalGroup || '') === selectedGroup;
-    const countryMatch = selectedCountry === 'Todos' || (r.agendamientoPorPais || r.pais).toLowerCase().includes(selectedCountry.toLowerCase());
-    const dateMatch = matchesDateRange(r.timestamp, selectedDateFrom, selectedDateTo);
+  const filtered = scheduledReports
+    .map((r, originalIdx) => ({ ...r, _origIdx: originalIdx }))
+    .filter(r => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        (r.nombreLeadAgendado || '').toLowerCase().includes(term) ||
+        (r.perfilLeadAgendado || '').toLowerCase().includes(term) ||
+        (r.pais || '').toLowerCase().includes(term) ||
+        (r.agendamientoPorPais || '').toLowerCase().includes(term) ||
+        (r._originalGroup || '').toLowerCase().includes(term) ||
+        (r.linkPerfil || '').toLowerCase().includes(term) ||
+        (r.sdr || '').toLowerCase().includes(term);
 
-    return matchesSearch && sdrMatch && groupMatch && countryMatch && dateMatch;
-  });
+      const sdrMatch = selectedSdr === 'Todos' || (r.sdr || '').trim().toLowerCase() === selectedSdr.trim().toLowerCase();
+      const groupMatch = selectedGroup === 'Todos' || (r._originalGroup || '') === selectedGroup;
+      const countryMatch = selectedCountry === 'Todos' || (r.agendamientoPorPais || r.pais).toLowerCase().includes(selectedCountry.toLowerCase());
+      const dateMatch = matchesDateRange(r.timestamp, selectedDateFrom, selectedDateTo);
+
+      return matchesSearch && sdrMatch && groupMatch && countryMatch && dateMatch;
+    })
+    .sort((a, b) => {
+      const timeDiff = parseSpanishDate(b.timestamp) - parseSpanishDate(a.timestamp);
+      if (timeDiff !== 0) return timeDiff;
+      return b._origIdx - a._origIdx; // Última fila ingresada va en la parte superior
+    });
 
   const totalScheduled = filtered.length;
   const asistidosCount = filtered.filter(r => r.asistioLead === 'Sí').length;

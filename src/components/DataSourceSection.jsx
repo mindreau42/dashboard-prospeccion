@@ -77,30 +77,52 @@ export default function DataSourceSection({ reports = [] }) {
     setSelectedDateTo('');
   };
 
-  const isLinkedinUrl = (val) => Boolean(val && (val.includes('linkedin.com/in/') || val.includes('linkedin.com/pub/') || (val.startsWith('http') && val.length > 20 && !val.endsWith('linkedin.com'))));
-
-  const filtered = reports.filter(r => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      (r.sdr || '').toLowerCase().includes(term) ||
-      (r.notion || '').toLowerCase().includes(term) ||
-      (r.otros || '').toLowerCase().includes(term) ||
-      (r.linkPerfil || '').toLowerCase().includes(term) ||
-      (r.categoria || '').toLowerCase().includes(term);
-
-    let channelMatch = true;
-    if (selectedChannel === 'Scraping') {
-      channelMatch = isLinkedinUrl(r.linkPerfil) || (r.origen || '').toLowerCase().includes('scrap');
-    } else if (selectedChannel === 'Notion') {
-      channelMatch = Boolean(r.notion && r.notion.trim() && r.notion !== '—');
-    } else if (selectedChannel === 'Outbound') {
-      channelMatch = Boolean(r.otros && r.otros.trim() && r.otros !== '—');
+  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+  const parseSpanishDate = (dateStr) => {
+    if (!dateStr) return 0;
+    const str = String(dateStr).trim().toLowerCase();
+    const dmyMatch = str.match(/^(\d{1,2})[-/]([a-z]{3}|\d{1,2})[-/](\d{2,4})/i);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const mStr = dmyMatch[2].toLowerCase();
+      const month = monthsMap[mStr] !== undefined ? monthsMap[mStr] : (parseInt(mStr, 10) - 1);
+      let year = parseInt(dmyMatch[3], 10);
+      if (year < 100) year += 2000;
+      return new Date(year, month, day).getTime();
     }
+    const isoDate = Date.parse(str);
+    return isNaN(isoDate) ? 0 : isoDate;
+  };
 
-    const sdrMatch = selectedSdr === 'Todos' || r.sdr === selectedSdr;
-    const dateMatch = matchesDateRange(r.timestamp, selectedDateFrom, selectedDateTo);
-    return matchesSearch && channelMatch && sdrMatch && dateMatch;
-  });
+  const filtered = reports
+    .map((r, originalIdx) => ({ ...r, _origIdx: originalIdx }))
+    .filter(r => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        (r.sdr || '').toLowerCase().includes(term) ||
+        (r.notion || '').toLowerCase().includes(term) ||
+        (r.otros || '').toLowerCase().includes(term) ||
+        (r.linkPerfil || '').toLowerCase().includes(term) ||
+        (r.categoria || '').toLowerCase().includes(term);
+
+      let channelMatch = true;
+      if (selectedChannel === 'Scraping') {
+        channelMatch = isLinkedinUrl(r.linkPerfil) || (r.origen || '').toLowerCase().includes('scrap');
+      } else if (selectedChannel === 'Notion') {
+        channelMatch = Boolean(r.notion && r.notion.trim() && r.notion !== '—');
+      } else if (selectedChannel === 'Outbound') {
+        channelMatch = Boolean(r.otros && r.otros.trim() && r.otros !== '—');
+      }
+
+      const sdrMatch = selectedSdr === 'Todos' || r.sdr === selectedSdr;
+      const dateMatch = matchesDateRange(r.timestamp, selectedDateFrom, selectedDateTo);
+      return matchesSearch && channelMatch && sdrMatch && dateMatch;
+    })
+    .sort((a, b) => {
+      const timeDiff = parseSpanishDate(b.timestamp) - parseSpanishDate(a.timestamp);
+      if (timeDiff !== 0) return timeDiff;
+      return b._origIdx - a._origIdx; // Última información que ingrese empieza de arriba
+    });
 
   const selectStyle = {
     background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a',
