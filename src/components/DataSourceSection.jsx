@@ -260,49 +260,70 @@ export default function DataSourceSection({ reports = [] }) {
           </thead>
           <tbody>
             {filtered.map((row, idx) => {
-              // 1. Scraping: Parse LinkedIn links into clean clickable buttons/badges
               const rawLink = String(row.linkPerfil || '').trim();
-              const extractedLinks = rawLink.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s,;]+/gi) || [];
-              const validLinks = extractedLinks.length > 0
-                ? extractedLinks.map(u => u.startsWith('http') ? u : `https://${u}`)
-                : (isLinkedinUrl(rawLink) ? [rawLink.startsWith('http') ? rawLink : `https://${rawLink}`] : []);
+              const rawNotion = String(row.notion || '').trim();
+              const rawOrigen = String(row.origen || '').trim().toLowerCase();
 
-              const scrapingContent = validLinks.length > 0 ? (
+              // ── Extract ALL LinkedIn URLs from both linkPerfil and notion fields ──
+              const urlRegex = /(?:https?:\/\/|www\.)?linkedin\.com\/in\/[^\s,;]+|https?:\/\/[^\s,;]+/gi;
+              const combinedText = `${rawLink} ${rawNotion}`;
+              const matchedUrls = combinedText.match(urlRegex) || [];
+              const cleanUrls = Array.from(new Set(
+                matchedUrls
+                  .filter(u => u.includes('linkedin.com') || u.startsWith('http'))
+                  .map(u => u.startsWith('http') ? u : `https://${u}`)
+              ));
+
+              // ── Extract text content from notion (remove URLs) ──
+              const notionText = rawNotion.replace(urlRegex, '').replace(/^\s*[-–—,\s]+|[-–—,\s]+\s*$/g, '').trim();
+
+              // ── Route content to correct column based on Origen de Prospección ──
+              let scrapingUrls = [];
+              let notionDisplay = '';
+              let outboundDisplay = '';
+
+              if (rawOrigen.includes('scrap')) {
+                scrapingUrls = cleanUrls;
+                if (notionText && !notionText.toLowerCase().includes('linkedin')) notionDisplay = notionText;
+              } else if (rawOrigen.includes('base') || rawOrigen.includes('datos') || rawOrigen.includes('bd')) {
+                scrapingUrls = cleanUrls;
+                notionDisplay = notionText || 'Base de Datos';
+              } else if (rawOrigen.includes('outbound')) {
+                scrapingUrls = cleanUrls;
+                outboundDisplay = notionText || 'Outbound';
+              } else {
+                // No explicit origen: use URL presence and text heuristics
+                scrapingUrls = cleanUrls;
+                if (notionText) {
+                  const low = notionText.toLowerCase();
+                  if (low.includes('liderazgo') || low.includes('cruzada') || low.includes('contacto') || low.includes('whatsapp') || low.includes('mi base') || low.includes('mi red')) {
+                    outboundDisplay = notionText;
+                  } else {
+                    notionDisplay = notionText;
+                  }
+                }
+              }
+
+              // ── 1. SCRAPING column: LinkedIn clickable buttons ──
+              const scrapingContent = scrapingUrls.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                  {validLinks.map((url, uIdx) => (
+                  {scrapingUrls.map((url, uIdx) => (
                     <a
                       key={uIdx}
                       href={url}
                       target="_blank"
                       rel="noreferrer"
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        background: '#f0f7ff',
-                        border: '1px solid #cce4ff',
-                        color: '#0a66c2',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                        transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap'
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        background: '#f0f7ff', border: '1px solid #cce4ff', color: '#0a66c2',
+                        padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
+                        fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#0a66c2';
-                        e.currentTarget.style.color = '#ffffff';
-                        e.currentTarget.style.borderColor = '#0a66c2';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#f0f7ff';
-                        e.currentTarget.style.color = '#0a66c2';
-                        e.currentTarget.style.borderColor = '#cce4ff';
-                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#0a66c2'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0a66c2'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f7ff'; e.currentTarget.style.color = '#0a66c2'; e.currentTarget.style.borderColor = '#cce4ff'; }}
                       title={url}
                     >
-                      <span style={{ fontWeight: 900, fontSize: '10px', background: '#0a66c2', color: '#ffffff', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>in</span>
+                      <span style={{ fontWeight: 900, fontSize: '10px', background: '#0a66c2', color: '#fff', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>in</span>
                       <span>Ver Perfil</span>
                       <ExternalLink size={10} style={{ flexShrink: 0 }} />
                     </a>
@@ -310,19 +331,17 @@ export default function DataSourceSection({ reports = [] }) {
                 </div>
               ) : <Dash />;
 
-              // 2. Notion: Only show if non-empty text
-              const hasNotion = Boolean(row.notion && row.notion.trim() && row.notion !== '—' && !row.notion.includes('linkedin.com'));
-              const notionContent = hasNotion ? (
+              // ── 2. NOTION/BD column ──
+              const notionContent = notionDisplay ? (
                 <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '12.5px', wordBreak: 'break-word', lineHeight: 1.35 }}>
-                  {row.notion}
+                  {notionDisplay}
                 </span>
               ) : <Dash />;
 
-              // 3. Outbound (Comentarios / Detalles de dónde consiguieron esa base)
-              const hasOutbound = Boolean(row.otros && row.otros.trim() && row.otros !== '—' && !row.otros.toLowerCase().includes('scraping') && !row.otros.includes('linkedin.com'));
-              const outboundContent = hasOutbound ? (
+              // ── 3. OUTBOUND column ──
+              const outboundContent = outboundDisplay ? (
                 <span style={{ color: '#475569', fontSize: '12px', fontWeight: 600, wordBreak: 'break-word', lineHeight: 1.35, display: 'inline-block', maxWidth: '220px' }}>
-                  {row.otros}
+                  {outboundDisplay}
                 </span>
               ) : <Dash />;
 
