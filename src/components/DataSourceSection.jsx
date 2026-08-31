@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Database, Search, ExternalLink, Users, Calendar, RotateCcw, Filter } from 'lucide-react';
 import { matchesDateRange } from '../utils/security';
 
+const isLinkedinUrl = (val) => Boolean(val && (val.includes('linkedin.com/in/') || val.includes('linkedin.com/pub/') || (val.startsWith('http') && val.length > 20 && !val.endsWith('linkedin.com'))));
+
 // Resolves each row into EXACTLY 1 prospecting source: Scraping, Notion, or Outbound
 function resolveRowSource(row) {
   const rawLink = String(row.linkPerfil || '').trim();
