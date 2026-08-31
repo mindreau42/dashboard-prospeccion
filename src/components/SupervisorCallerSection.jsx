@@ -299,8 +299,39 @@ export default function SupervisorCallerSection({
     return Object.values(groups).sort((a, b) => parseSpanishDate(b.fecha) - parseSpanishDate(a.fecha));
   }, [displayScorecardReports, displayCallerRecords]);
 
-  // ── Historial diario ordenado del más reciente (Hoy) al más antiguo ──
+  // ── Historial diario ordenado: fecha actual en curso (Hoy) siempre en la cima y fechas anteriores abajo ──
+  const isSameDay = (dStr1, dStr2) => {
+    const t1 = parseSpanishDate(dStr1);
+    const t2 = parseSpanishDate(dStr2);
+    if (!t1 || !t2) return false;
+    const a = new Date(t1);
+    const b = new Date(t2);
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  };
+
   const dailyHistoryList = useMemo(() => {
+    const now = new Date();
+    const todayDay = String(now.getDate()).padStart(2, '0');
+    const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const todayYear = now.getFullYear();
+    const todayFormatted = `${todayDay}/${todayMonth}/${todayYear}`;
+
+    const hasToday = allDailyList.some(item => isSameDay(item.fecha, todayFormatted));
+
+    if (!hasToday) {
+      const todayStub = {
+        fecha: todayFormatted,
+        llamadasDiarias: 0,
+        contactosUnicos: 0,
+        fuentesConteo: 0,
+        mensajesEnviados: 0,
+        comunidadSkool: 0,
+        enSeguimiento: 0,
+        citasAgendadas: 0
+      };
+      return [todayStub, ...allDailyList];
+    }
+
     return allDailyList;
   }, [allDailyList]);
 
