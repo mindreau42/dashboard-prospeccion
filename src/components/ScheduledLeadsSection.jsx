@@ -18,11 +18,45 @@ function expandScheduledRecords(rawReports) {
       .replace(/\s+/g, ' ');
 
   (rawReports || []).forEach((r, rowIdx) => {
-    if (!r.nombreLeadAgendado) return;
-    const rawNameStr = String(r.nombreLeadAgendado).trim();
-    if (!rawNameStr || rawNameStr.length < 2 || !isNaN(Number(rawNameStr))) return;
-    if (['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento', 'lead agendado', 'lead', 'prospecto'].includes(rawNameStr.toLowerCase())) return;
-    if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(rawNameStr)) return;
+    const rawNameStr = String(r.nombreLeadAgendado || '').trim();
+    const hasAgendamientoCount = Number(r.agendamientos || 0) > 0 || Number(r.asistidos || 0) > 0;
+
+    // If no lead name specified but agendamiento is recorded, keep it as a valid scheduled row
+    if (!rawNameStr) {
+      if (hasAgendamientoCount) {
+        result.push({
+          id: `${r.id || rowIdx}_indiv_0`,
+          timestamp: r.timestamp || '—',
+          sdr: r.sdr || '—',
+          nombreLeadAgendado: 'Lead Agendado',
+          perfilLeadAgendado: r.perfilLeadAgendado || 'Tomador de Decisión',
+          pais: r.agendamientoPorPais || r.pais || 'Colombia',
+          agendamientoPorPais: r.agendamientoPorPais || r.pais || 'Colombia',
+          linkPerfil: r.linkPerfil || '',
+          asistioLead: (r.asistioLead === 'Sí' || Number(r.asistidos || 0) > 0) ? 'Sí' : 'No',
+          _originalGroup: r._group || ''
+        });
+      }
+      return;
+    }
+
+    if (['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento'].includes(rawNameStr.toLowerCase())) {
+      if (hasAgendamientoCount) {
+        result.push({
+          id: `${r.id || rowIdx}_indiv_0`,
+          timestamp: r.timestamp || '—',
+          sdr: r.sdr || '—',
+          nombreLeadAgendado: 'Lead Agendado',
+          perfilLeadAgendado: r.perfilLeadAgendado || 'Tomador de Decisión',
+          pais: r.agendamientoPorPais || r.pais || 'Colombia',
+          agendamientoPorPais: r.agendamientoPorPais || r.pais || 'Colombia',
+          linkPerfil: r.linkPerfil || '',
+          asistioLead: (r.asistioLead === 'Sí' || Number(r.asistidos || 0) > 0) ? 'Sí' : 'No',
+          _originalGroup: r._group || ''
+        });
+      }
+      return;
+    }
 
     // 1. Split names if multiple were written in 1 cell
     let names = [rawNameStr];

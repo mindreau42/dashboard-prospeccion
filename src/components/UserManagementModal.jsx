@@ -284,18 +284,50 @@ export default function UserManagementModal({
             borderRadius: '10px',
             padding: '16px 18px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {isEditing ? <Edit2 size={14} color="#2563eb" /> : <UserPlus size={14} color="#2563eb" />}
-                {isEditing ? 'Modificar Usuario Seleccionado' : 'Registrar Nuevo Usuario'}
-              </h4>
-              {isEditing && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: isEditing ? '#fef3c7' : '#eff6ff',
+                  border: isEditing ? '1px solid #fde68a' : '1px solid #bfdbfe',
+                  color: isEditing ? '#b45309' : '#1d4ed8',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase'
+                }}>
+                  {isEditing ? 'MODO: EDITANDO' : 'MODO: CREACIÓN'}
+                </span>
+                <h4 style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                  {isEditing ? <Edit2 size={15} color="#d97706" /> : <UserPlus size={15} color="#2563eb" />}
+                  {isEditing ? `Modificando usuario: "${fullName || username}"` : 'Formulario de Registro de Nuevo Usuario'}
+                </h4>
+              </div>
+              {isEditing ? (
                 <button
+                  type="button"
                   onClick={resetForm}
-                  style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#64748b', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer' }}
+                  style={{
+                    background: '#2563eb',
+                    border: 'none',
+                    color: '#ffffff',
+                    borderRadius: '6px',
+                    padding: '5px 12px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
+                  }}
                 >
-                  Cancelar Edición
+                  <UserPlus size={12} /> + Crear Nuevo Usuario (Cancelar Edición)
                 </button>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                  Completa los campos abajo y presiona "Guardar Nuevo Usuario"
+                </span>
               )}
             </div>
 
@@ -504,12 +536,33 @@ export default function UserManagementModal({
               </h4>
 
               {/* Search & Filter Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="search-input-futuristic" style={{ width: '200px', padding: '5px 10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  style={{
+                    background: '#eff6ff',
+                    border: '1.5px solid #93c5fd',
+                    color: '#1d4ed8',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Crear un usuario nuevo"
+                >
+                  <UserPlus size={13} /> + Registrar Nuevo Usuario
+                </button>
+
+                <div className="search-input-futuristic" style={{ width: '180px', padding: '5px 10px' }}>
                   <Search size={13} color="#64748b" />
                   <input
                     type="text"
-                    placeholder="Buscar usuario o grupo..."
+                    placeholder="Buscar usuario..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{ fontSize: '12px' }}

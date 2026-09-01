@@ -417,16 +417,22 @@ export default function SupervisorCallerSection({
     );
   };
 
-  // Format short caller name for compact table display
+  // Format short caller name for compact table display (shows strictly caller's actual name like 'Nury')
   const formatShortCallerName = (rawName) => {
-    if (!rawName) return 'Caller 1';
+    if (!rawName) return 'Nury';
     const str = String(rawName).trim();
-    if (str.includes('Proceso 1') || str.includes('Caller 1')) {
-      if (str.toLowerCase().includes('nury')) return 'Caller 1 (Nury)';
-      return 'Caller 1';
+    if (str.toLowerCase().includes('nury')) return 'Nury';
+    if (str.includes('(') && str.includes(')')) {
+      const match = str.match(/\(([^)]+)\)/);
+      if (match && match[1]) return match[1].trim();
     }
-    if (str.includes('Proceso 2') || str.includes('Caller 2')) return 'Caller 2';
-    if (str.includes('Proceso 3') || str.includes('Caller 3')) return 'Caller 3';
+    if (str.includes('—') || str.includes('-')) {
+      const parts = str.split(/[—\-]/);
+      const lastPart = parts[parts.length - 1].trim();
+      if (lastPart && !lastPart.toLowerCase().startsWith('caller') && !lastPart.toLowerCase().startsWith('proceso')) {
+        return lastPart;
+      }
+    }
     return str.length > 15 ? str.substring(0, 13) + '...' : str;
   };
 
