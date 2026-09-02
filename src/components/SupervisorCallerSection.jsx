@@ -187,7 +187,7 @@ export default function SupervisorCallerSection({
   };
 
   // Spanish date parser for exact chronological ordering (newest first)
-  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dic: 11 };
   const parseSpanishDate = (dateStr) => {
     if (!dateStr) return 0;
     const str = String(dateStr).trim().toLowerCase();
@@ -953,16 +953,16 @@ export default function SupervisorCallerSection({
                           </button>
                         </div>
 
-                        <div style={{ maxHeight: '180px', overflowY: 'auto', fontSize: '11px' }}>
+                        <div style={{ maxHeight: '260px', overflowY: 'auto', fontSize: '11px' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
-                              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                              <tr style={{ borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, background: '#ffffff' }}>
                                 <th style={{ textAlign: 'left', padding: '4px 6px', color: '#64748b', fontWeight: 700 }}>Fecha</th>
                                 <th style={{ textAlign: 'right', padding: '4px 6px', color: topBorder, fontWeight: 700 }}>Valor</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {dailyHistoryList.slice(0, 14).map((row, i) => (
+                              {dailyHistoryList.map((row, i) => (
                                 <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i === 0 ? `${accentBg}` : 'transparent' }}>
                                   <td style={{ padding: '4px 6px', color: '#334155', fontWeight: i === 0 ? 800 : 600 }}>
                                     {row.fecha} {i === 0 && <span style={{ fontSize: '9.5px', background: accentBorder, color, padding: '1px 4px', borderRadius: '3px', fontWeight: 800, marginLeft: '3px' }}>Hoy</span>}

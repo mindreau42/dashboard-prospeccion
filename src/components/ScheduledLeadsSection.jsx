@@ -19,9 +19,35 @@ function expandScheduledRecords(rawReports) {
 
   (rawReports || []).forEach((r, rowIdx) => {
     const rawNameStr = String(r.nombreLeadAgendado || '').trim();
-    if (!rawNameStr || rawNameStr.length < 2 || !isNaN(Number(rawNameStr))) return;
-    if (['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento', 'lead agendado', 'lead', 'prospecto'].includes(rawNameStr.toLowerCase())) return;
-    if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(rawNameStr)) return;
+    const rawAsistio = String(r.asistioLead || '').trim().toLowerCase();
+    const rawMeta = String(r.cumplioMeta || '').trim().toLowerCase();
+    const hasMetaSi = rawMeta === 'si' || rawMeta === 'sí' || rawMeta.startsWith('si') || rawMeta.startsWith('sí');
+    const hasAsistioRecorded = rawAsistio.startsWith('si') || rawAsistio.startsWith('sí') || rawAsistio.startsWith('no');
+
+    const asistio = (rawAsistio.startsWith('si') || rawAsistio.startsWith('sí') || rawAsistio === '1' || rawAsistio === 'true') ? 'Sí' : 'No';
+
+    const isValidName = rawNameStr && rawNameStr.length >= 2 && isNaN(Number(rawNameStr)) &&
+      !['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento', 'lead agendado', 'lead', 'prospecto'].includes(rawNameStr.toLowerCase()) &&
+      /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(rawNameStr);
+
+    if (!isValidName) {
+      // Row with Meta = SI and attendance outcome recorded (valid agendado lead without a written personal contact name)
+      if (hasMetaSi && hasAsistioRecorded) {
+        result.push({
+          id: `${r.id || rowIdx}_indiv_0`,
+          timestamp: r.timestamp || '—',
+          sdr: r.sdr || '—',
+          nombreLeadAgendado: 'Lead Agendado',
+          perfilLeadAgendado: r.perfilLeadAgendado || 'Tomador de Decisión',
+          pais: r.agendamientoPorPais || r.pais || 'General',
+          agendamientoPorPais: r.agendamientoPorPais || r.pais || 'General',
+          linkPerfil: '',
+          asistioLead: asistio,
+          _originalGroup: r._group || ''
+        });
+      }
+      return;
+    }
 
     // 1. Split names if multiple were written in 1 cell
     let names = [rawNameStr];
@@ -80,10 +106,16 @@ function expandScheduledRecords(rawReports) {
 
   // ── DEDUPLICATION POST-EXPANSION (Deduplicate by unique contact name across groups/submissions) ──
   const nameMap = new Map();
+  const finalLeads = [];
   result.forEach(row => {
+    if (row.nombreLeadAgendado === 'Lead Agendado') {
+      finalLeads.push(row);
+      return;
+    }
     const key = norm(row.nombreLeadAgendado);
     if (!nameMap.has(key)) {
       nameMap.set(key, row);
+      finalLeads.push(row);
     } else {
       const existing = nameMap.get(key);
       if (row.asistioLead === 'Sí') {
@@ -92,7 +124,7 @@ function expandScheduledRecords(rawReports) {
     }
   });
 
-  return Array.from(nameMap.values());
+  return finalLeads;
 }
 
 export default function ScheduledLeadsSection({ reports = [] }) {
