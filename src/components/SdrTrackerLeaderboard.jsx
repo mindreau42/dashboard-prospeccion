@@ -379,54 +379,25 @@ export default function SdrTrackerLeaderboard({ reports = [] }) {
               Tracker | Leaderboard (Desempeño de SDRs)
             </h3>
             <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-              {viewMode === 'consolidated'
-                ? 'Vista Consolidada por SDR: 1 fila por asesor sumando sus reportes acumulados y equipo asignado.'
-                : 'Desglose Detallado por Reporte: Cada entrega individual con su fecha y canal/equipo correspondiente.'}
+              Vista Consolidada por SDR: 1 fila por asesor sumando sus reportes acumulados y equipo asignado.
             </p>
           </div>
 
-          {/* Toggle de Modo de Visualización (Consolidado vs Desglose) */}
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <button
-              onClick={() => setViewMode('consolidated')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === 'consolidated' ? '#ffffff' : 'transparent',
-                color: viewMode === 'consolidated' ? '#2563eb' : '#64748b',
-                fontWeight: 800,
-                fontSize: '12px',
-                cursor: 'pointer',
-                boxShadow: viewMode === 'consolidated' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <UserCheck size={13} /> Consolidado por SDR ({consolidatedList.length})
-            </button>
-            <button
-              onClick={() => setViewMode('breakdown')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === 'breakdown' ? '#ffffff' : 'transparent',
-                color: viewMode === 'breakdown' ? '#2563eb' : '#64748b',
-                fontWeight: 800,
-                fontSize: '12px',
-                cursor: 'pointer',
-                boxShadow: viewMode === 'breakdown' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <ListFilter size={13} /> Desglose por Reporte ({filteredReports.length})
-            </button>
+          {/* Mode Badge — strictly Consolidado por SDR */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            color: '#1d4ed8',
+            padding: '6px 14px',
+            borderRadius: '8px',
+            fontWeight: 800,
+            fontSize: '12px'
+          }}>
+            <UserCheck size={14} color="#2563eb" />
+            <span>Consolidado por SDR ({consolidatedList.length} Asesores)</span>
           </div>
         </div>
 

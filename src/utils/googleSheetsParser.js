@@ -1,20 +1,47 @@
 import * as XLSX from 'xlsx';
 
 /**
- * Converts Excel serial date (e.g., 46251) or string date to human-readable format
+ * Converts Excel serial date (e.g., 46251) or string date to human-readable format DD-Mes-YY
  */
 export function formatExcelDate(rawDate) {
   if (!rawDate) return '';
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
+  
   if (typeof rawDate === 'number') {
     // Excel base date: Dec 30, 1899
     const date = new Date((rawDate - 25569) * 86400 * 1000);
     const day = String(date.getUTCDate()).padStart(2, '0');
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const month = monthNames[date.getUTCMonth()] || 'Mes';
-    const year = date.getUTCFullYear();
+    const year = String(date.getUTCFullYear()).slice(-2);
     return `${day}-${month}-${year}`;
   }
-  return String(rawDate).trim();
+
+  const str = String(rawDate).trim();
+  // Check DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+  if (dmyMatch) {
+    const day = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
+    const mIdx = parseInt(dmyMatch[2], 10) - 1;
+    const month = monthNames[mIdx] || 'Mes';
+    let year = parseInt(dmyMatch[3], 10);
+    if (year < 100) year += 2000;
+    return `${day}-${month}-${String(year).slice(-2)}`;
+  }
+
+  // Check DD-Mes-YY or DD-Mes-YYYY
+  const dMesMatch = str.match(/^(\d{1,2})[-/]([a-z]{3})[-/](\d{2,4})/i);
+  if (dMesMatch) {
+    const day = String(parseInt(dMesMatch[1], 10)).padStart(2, '0');
+    const mStr = dMesMatch[2].toLowerCase();
+    const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dic: 11 };
+    const mIdx = monthsMap[mStr] !== undefined ? monthsMap[mStr] : 7;
+    const month = monthNames[mIdx];
+    let year = parseInt(dMesMatch[3], 10);
+    if (year < 100) year += 2000;
+    return `${day}-${month}-${String(year).slice(-2)}`;
+  }
+
+  return str;
 }
 
 /**
@@ -416,9 +443,9 @@ export async function fetchSupervisorSheetData(sheetUrl = 'https://docs.google.c
       } else {
         const text = await response.text();
         if (!text || text.trim().length === 0 || (text.includes('<!DOCTYPE html>') && !text.includes(','))) continue;
-        const workbook = XLSX.read(text, { type: 'string' });
+        const workbook = XLSX.read(text, { type: 'string', raw: true });
         const sheetName = workbook.SheetNames[0];
-        rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+        rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
       }
 
       if (!rawRows || rawRows.length === 0) continue;
@@ -434,6 +461,8 @@ export async function fetchSupervisorSheetData(sheetUrl = 'https://docs.google.c
 
 function parseSupervisorRows(rawRows, sheetUrl) {
       const callerRecords = [];
+      let lastSeenFecha = '18-Ago-26';
+
       rawRows.forEach((r) => {
         const rawNombre = String(getVal(r, ['nombre', 'nombre completo', 'nombre y apellido', 'nombre del prospecto', 'prospecto', 'lead', 'contacto', 'cliente', 'persona', 'titular', 'alumno', 'name', 'full name']) || '').trim();
         const rawFuente = String(getVal(r, ['fuente', 'origen', 'canal', 'source', 'lead source', 'fuente de origen', 'tipo de fuente']) || '').trim();
@@ -447,7 +476,16 @@ function parseSupervisorRows(rawRows, sheetUrl) {
           return;
         }
 
-        const fecha = formatExcelDate(getVal(r, ['fecha', 'marca temporal', 'date']) || '18-ago-26');
+        const keys = Object.keys(r);
+        let rawDateVal = getVal(r, ['fecha', 'marca temporal', 'date', 'registro', 'timestamp']);
+        if (!rawDateVal && keys.length > 0) {
+          rawDateVal = r[keys[0]];
+        }
+        const formattedFecha = formatExcelDate(rawDateVal);
+        const fecha = formattedFecha || lastSeenFecha;
+        if (formattedFecha) {
+          lastSeenFecha = formattedFecha;
+        }
         const nombre = rawNombre || '—';
         const fuente = (rawFuente && rawFuente !== '—' && rawFuente !== '-') ? rawFuente : '—';
         const respuesta = rawRespuesta || 'Sin Respuesta';
