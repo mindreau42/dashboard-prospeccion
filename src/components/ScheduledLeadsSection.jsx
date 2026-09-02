@@ -8,55 +8,20 @@ import { matchesDateRange } from '../utils/security';
 function expandScheduledRecords(rawReports) {
   const result = [];
 
-  // normalize helper: strip accents, lowercase, trim extra spaces
+  // normalize helper: strip accents, lowercase, punctuation, trim extra spaces
   const norm = (s) =>
     String(s || '')
       .trim()
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ');
+      .replace(/[^a-z0-9]/g, '');
 
   (rawReports || []).forEach((r, rowIdx) => {
     const rawNameStr = String(r.nombreLeadAgendado || '').trim();
-    const hasAgendamientoCount = Number(r.agendamientos || 0) > 0 || Number(r.asistidos || 0) > 0;
-
-    // If no lead name specified but agendamiento is recorded, keep it as a valid scheduled row
-    if (!rawNameStr) {
-      if (hasAgendamientoCount) {
-        result.push({
-          id: `${r.id || rowIdx}_indiv_0`,
-          timestamp: r.timestamp || '—',
-          sdr: r.sdr || '—',
-          nombreLeadAgendado: 'Lead Agendado',
-          perfilLeadAgendado: r.perfilLeadAgendado || 'Tomador de Decisión',
-          pais: r.agendamientoPorPais || r.pais || 'Colombia',
-          agendamientoPorPais: r.agendamientoPorPais || r.pais || 'Colombia',
-          linkPerfil: r.linkPerfil || '',
-          asistioLead: (r.asistioLead === 'Sí' || Number(r.asistidos || 0) > 0) ? 'Sí' : 'No',
-          _originalGroup: r._group || ''
-        });
-      }
-      return;
-    }
-
-    if (['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento'].includes(rawNameStr.toLowerCase())) {
-      if (hasAgendamientoCount) {
-        result.push({
-          id: `${r.id || rowIdx}_indiv_0`,
-          timestamp: r.timestamp || '—',
-          sdr: r.sdr || '—',
-          nombreLeadAgendado: 'Lead Agendado',
-          perfilLeadAgendado: r.perfilLeadAgendado || 'Tomador de Decisión',
-          pais: r.agendamientoPorPais || r.pais || 'Colombia',
-          agendamientoPorPais: r.agendamientoPorPais || r.pais || 'Colombia',
-          linkPerfil: r.linkPerfil || '',
-          asistioLead: (r.asistioLead === 'Sí' || Number(r.asistidos || 0) > 0) ? 'Sí' : 'No',
-          _originalGroup: r._group || ''
-        });
-      }
-      return;
-    }
+    if (!rawNameStr || rawNameStr.length < 2 || !isNaN(Number(rawNameStr))) return;
+    if (['n/a', '—', '-', 'ninguno', 'ninguna', 'no', '0', 'sin agendamiento', 'lead agendado', 'lead', 'prospecto'].includes(rawNameStr.toLowerCase())) return;
+    if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(rawNameStr)) return;
 
     // 1. Split names if multiple were written in 1 cell
     let names = [rawNameStr];
@@ -113,14 +78,21 @@ function expandScheduledRecords(rawReports) {
     });
   });
 
-  // ── DEDUPLICATION POST-EXPANSION ──
-  const seen = new Set();
-  return result.filter(row => {
-    const key = `${norm(row.nombreLeadAgendado)}|${row.timestamp}|${norm(row.sdr)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  // ── DEDUPLICATION POST-EXPANSION (Deduplicate by unique contact name across groups/submissions) ──
+  const nameMap = new Map();
+  result.forEach(row => {
+    const key = norm(row.nombreLeadAgendado);
+    if (!nameMap.has(key)) {
+      nameMap.set(key, row);
+    } else {
+      const existing = nameMap.get(key);
+      if (row.asistioLead === 'Sí') {
+        existing.asistioLead = 'Sí';
+      }
+    }
   });
+
+  return Array.from(nameMap.values());
 }
 
 export default function ScheduledLeadsSection({ reports = [] }) {
