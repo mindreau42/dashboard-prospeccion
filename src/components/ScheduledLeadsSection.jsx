@@ -160,7 +160,7 @@ export default function ScheduledLeadsSection({ reports = [] }) {
     setSelectedDateTo('');
   };
 
-  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dic: 11 };
   const parseSpanishDate = (dateStr) => {
     if (!dateStr) return 0;
     const str = String(dateStr).trim().toLowerCase();
