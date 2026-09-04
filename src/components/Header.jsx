@@ -1,4 +1,5 @@
 import React from 'react';
+import neoomaLogo from '../assets/logo-neooma.png';
 import {
   FileSpreadsheet, Link2, Trash2,
   Sparkles, TrendingUp, Trophy, CalendarCheck, Database, Layers,
@@ -42,7 +43,7 @@ export default function Header({
           {/* Marca, Logo y Rol */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <img
-              src="/logo-neooma.png"
+              src={neoomaLogo}
               alt="NEOOMA"
               style={{
                 height: '36px',

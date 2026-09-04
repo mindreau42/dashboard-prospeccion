@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import { getLockoutStatus, recordFailedAttempt, clearFailedAttempts, sanitizeInput, verifyPassword } from '../utils/security';
 import packageJson from '../../package.json';
+import neoomaLogo from '../assets/logo-neooma.png';
 
 const APP_VERSION = `v${packageJson.version}`;
 
@@ -148,7 +149,7 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ marginBottom: '18px' }}>
             <img
-              src="/logo-neooma.png"
+              src={neoomaLogo}
               alt="NEOOMA — The Breath of Transformation"
               style={{
                 maxWidth: '220px',

@@ -338,13 +338,16 @@ export default function OperativeAnalysisSection({ reports = [] }) {
   const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
   const categoryLabels = sortedCategories.map(([cat]) => cat);
   const categoryValues = sortedCategories.map(([_, val]) => val);
-  const totalCategories = categoryValues.reduce((a, b) => a + b, 0) || filteredReports.length || 1;
+  const totalCategoriesCount = categoryValues.reduce((a, b) => a + b, 0) || filteredReports.length || 1;
+  const numSectores = sortedCategories.length;
+
+  const CATEGORY_COLORS = ['#2563eb', '#059669', '#7c3aed', '#d97706', '#dc2626'];
 
   const categoryChartData = {
     labels: categoryLabels,
     datasets: [{
       data: categoryValues,
-      backgroundColor: ['#2563eb', '#059669', '#7c3aed', '#d97706', '#dc2626'],
+      backgroundColor: CATEGORY_COLORS.slice(0, categoryLabels.length),
       borderWidth: 2,
       borderColor: '#ffffff'
     }]
@@ -591,17 +594,16 @@ export default function OperativeAnalysisSection({ reports = [] }) {
                 <div style={{ height: '125px' }}>
                   <DonutCenter
                     data={categoryChartData}
-                    centerVal={totalCategories}
+                    centerVal={numSectores}
                     centerLabel="Sectores"
-                    accentColor="#7c3aed"
+                    accentColor="#2563eb"
                   />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: 0 }}>
-                  {Object.entries(categoryCounts).map(([cat, count], i) => {
-                    const pct = totalCategories > 0 ? ((count / totalCategories) * 100).toFixed(0) : 0;
-                    const colors = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#dc2626'];
-                    const color = colors[i % colors.length];
+                  {sortedCategories.map(([cat, count], i) => {
+                    const pct = totalCategoriesCount > 0 ? ((count / totalCategoriesCount) * 100).toFixed(0) : 0;
+                    const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
                     return (
                       <div key={cat} style={{ background: '#f8fafc', padding: '5px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: 800, marginBottom: '2px' }}>
