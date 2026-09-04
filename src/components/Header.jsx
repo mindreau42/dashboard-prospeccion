@@ -39,14 +39,27 @@ export default function Header({
         {/* FILA 1: IDENTIFICADOR DE MARCA A LA IZQUIERDA Y CONTROLES DE USUARIO FIJOS A LA DERECHA */}
         <div className="header-row-1" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
           
-          {/* Marca y Rol */}
-          <div>
-            <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
-              Dashboard de Prospección
-            </h1>
-            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
-              Reporte de Actividad: Métricas y KPIs
-            </p>
+          {/* Marca, Logo y Rol */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <img
+              src="/logo-neooma.png"
+              alt="NEOOMA"
+              style={{
+                height: '36px',
+                width: 'auto',
+                display: 'block',
+                objectFit: 'contain',
+                flexShrink: 0
+              }}
+            />
+            <div>
+              <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
+                Dashboard de Prospección
+              </h1>
+              <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
+                Reporte de Actividad: Métricas y KPIs
+              </p>
+            </div>
           </div>
 
           {/* CONTROLES FIJOS A LA DERECHA (POSICIÓN ESTÁNDAR SIEMPRE IDÉNTICA) */}

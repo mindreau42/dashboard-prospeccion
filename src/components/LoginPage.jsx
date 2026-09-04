@@ -144,25 +144,23 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
 
-        {/* Brand Header */}
+        {/* Brand Header — NEOOMA Logo */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '54px',
-            height: '54px',
-            borderRadius: '14px',
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            color: '#2563eb',
-            marginBottom: '14px',
-            boxShadow: '0 4px 12px rgba(37,99,235,0.1)'
-          }}>
-            <TrendingUp size={26} color="#2563eb" />
+          <div style={{ marginBottom: '18px' }}>
+            <img
+              src="/logo-neooma.png"
+              alt="NEOOMA — The Breath of Transformation"
+              style={{
+                maxWidth: '220px',
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                margin: '0 auto'
+              }}
+            />
           </div>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
             Dashboard de Prospección
           </h1>
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
