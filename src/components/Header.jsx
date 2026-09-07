@@ -40,26 +40,25 @@ export default function Header({
         {/* FILA 1: IDENTIFICADOR DE MARCA A LA IZQUIERDA Y CONTROLES DE USUARIO FIJOS A LA DERECHA */}
         <div className="header-row-1" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
           
-          {/* Marca, Logo y Rol */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <img
-              src={neoomaLogo}
-              alt="NEOOMA"
-              style={{
-                height: '36px',
-                width: 'auto',
-                display: 'block',
-                objectFit: 'contain',
-                flexShrink: 0
-              }}
-            />
-            <div>
-              <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
-                Dashboard de Prospección
-              </h1>
-              <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
-                Reporte de Actividad: Métricas y KPIs
-              </p>
+          {/* Marca, Subtítulo y Logo NEOOMA debajo */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
+              Dashboard de Prospección
+            </h1>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
+              Reporte de Actividad: Métricas y KPIs
+            </p>
+            <div style={{ marginTop: '2px' }}>
+              <img
+                src={neoomaLogo}
+                alt="NEOOMA — The Breath of Transformation"
+                style={{
+                  height: '22px',
+                  width: 'auto',
+                  display: 'block',
+                  objectFit: 'contain'
+                }}
+              />
             </div>
           </div>
 

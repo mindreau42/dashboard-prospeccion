@@ -79,7 +79,7 @@ export default function DataSourceSection({ reports = [] }) {
     setSelectedDateTo('');
   };
 
-  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11 };
+  const monthsMap = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dic: 11 };
   const parseSpanishDate = (dateStr) => {
     if (!dateStr) return 0;
     const str = String(dateStr).trim().toLowerCase();
@@ -260,14 +260,13 @@ export default function DataSourceSection({ reports = [] }) {
           </thead>
           <tbody>
             {filtered.map((row, idx) => {
-              const rawLink = String(row.linkPerfil || '').trim();
               const rawNotion = String(row.notion || '').trim();
               const rawOrigen = String(row.origen || '').trim().toLowerCase();
 
-              // ── Extract ALL LinkedIn URLs from both linkPerfil and notion fields ──
+              // ── Extract LinkedIn URLs ONLY from the 'Fuente de Datos' (notion) column ──
+              // (row.linkPerfil belongs to the agendados booking lead, not the prospecting source)
               const urlRegex = /(?:https?:\/\/|www\.)?linkedin\.com\/in\/[^\s,;]+|https?:\/\/[^\s,;]+/gi;
-              const combinedText = `${rawLink} ${rawNotion}`;
-              const matchedUrls = combinedText.match(urlRegex) || [];
+              const matchedUrls = rawNotion.match(urlRegex) || [];
               const cleanUrls = Array.from(new Set(
                 matchedUrls
                   .filter(u => u.includes('linkedin.com') || u.startsWith('http'))
@@ -286,14 +285,20 @@ export default function DataSourceSection({ reports = [] }) {
                 scrapingUrls = cleanUrls;
                 if (notionText && !notionText.toLowerCase().includes('linkedin')) notionDisplay = notionText;
               } else if (rawOrigen.includes('base') || rawOrigen.includes('datos') || rawOrigen.includes('bd')) {
-                scrapingUrls = cleanUrls;
-                notionDisplay = notionText || 'Base de Datos';
+                if (cleanUrls.length > 0) {
+                  scrapingUrls = cleanUrls;
+                }
+                notionDisplay = notionText || (cleanUrls.length > 0 ? '' : 'Base de Datos');
               } else if (rawOrigen.includes('outbound')) {
-                scrapingUrls = cleanUrls;
-                outboundDisplay = notionText || 'Outbound';
+                if (cleanUrls.length > 0) {
+                  scrapingUrls = cleanUrls;
+                }
+                outboundDisplay = notionText || (cleanUrls.length > 0 ? '' : 'Outbound');
               } else {
                 // No explicit origen: use URL presence and text heuristics
-                scrapingUrls = cleanUrls;
+                if (cleanUrls.length > 0) {
+                  scrapingUrls = cleanUrls;
+                }
                 if (notionText) {
                   const low = notionText.toLowerCase();
                   if (low.includes('liderazgo') || low.includes('cruzada') || low.includes('contacto') || low.includes('whatsapp') || low.includes('mi base') || low.includes('mi red')) {
