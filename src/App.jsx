@@ -70,8 +70,8 @@ const DEFAULT_GROUPS_DATA = {
   },
   'Setters Oficiales': {
     records: [],
-    url: '',
-    sourceName: '',
+    url: SHEET_URL_SETTERS_OFICIALES,
+    sourceName: 'Google Sheets (Setters Oficiales)',
     lastSync: ''
   },
 };
@@ -213,7 +213,18 @@ export default function App() {
       .then(res => res.json())
       .then(serverState => {
         if (serverState && typeof serverState === 'object') {
-          if (serverState.groupsData) setGroupsData(serverState.groupsData);
+          if (serverState.groupsData) {
+            // Protect Setters Oficiales URL — never overwrite existing URL with empty string
+            const incoming = serverState.groupsData;
+            if (!incoming['Setters Oficiales']?.url) {
+              incoming['Setters Oficiales'] = {
+                ...incoming['Setters Oficiales'],
+                url: SHEET_URL_SETTERS_OFICIALES,
+                sourceName: incoming['Setters Oficiales']?.sourceName || 'Google Sheets (Setters Oficiales)'
+              };
+            }
+            setGroupsData(incoming);
+          }
           if (serverState.callersData) setCallersData(serverState.callersData);
           if (serverState.adminReports) setAdminReports(serverState.adminReports);
           if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {

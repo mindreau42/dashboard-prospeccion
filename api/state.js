@@ -81,7 +81,17 @@ async function savePersistedState(incoming) {
   const merged = {
     ...current,
     ...incoming,
-    groupsData: incoming.groupsData ? { ...current.groupsData, ...incoming.groupsData } : current.groupsData,
+    groupsData: incoming.groupsData ? {
+      ...current.groupsData,
+      ...Object.fromEntries(
+        Object.entries(incoming.groupsData).map(([k, v]) => [k, {
+          ...current.groupsData[k],
+          ...v,
+          // Never overwrite a real URL with an empty string
+          url: v.url || current.groupsData[k]?.url || ''
+        }])
+      )
+    } : current.groupsData,
     callersData: incoming.callersData ? { ...current.callersData, ...incoming.callersData } : current.callersData,
     adminReports: incoming.adminReports !== undefined ? incoming.adminReports : current.adminReports,
     users: incoming.users !== undefined ? incoming.users : current.users
