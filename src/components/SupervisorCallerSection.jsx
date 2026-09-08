@@ -1143,7 +1143,7 @@ export default function SupervisorCallerSection({
               extra: null
             }),
             makeCard({
-              id: 'skool', title: 'Comunidad Skool', icon: <Users size={18} />,
+              id: 'skool', title: 'Comunidad GHL', icon: <Users size={18} />,
               bg: 'linear-gradient(145deg, #ffffff 0%, #ecfeff 100%)',
               border: '#a5f3fc', topBorder: '#0891b2', color: '#0e7490',
               accentBg: '#ecfeff', accentBorder: '#a5f3fc',
@@ -1264,7 +1264,7 @@ export default function SupervisorCallerSection({
                 <th style={{ textAlign: 'center' }}>Respuesta / Estado</th>
                 <th style={{ textAlign: 'center' }}>Intentos</th>
                 <th style={{ textAlign: 'center' }}>Mensajes 1-1</th>
-                <th style={{ textAlign: 'center' }}>Comunidad Skool</th>
+                <th style={{ textAlign: 'center' }}>Comunidad GHL</th>
                 <th style={{ textAlign: 'center' }}>Contexto & Notas</th>
                 <th style={{ textAlign: 'center' }}>Re-contactar</th>
               </tr>

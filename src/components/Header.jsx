@@ -48,13 +48,14 @@ export default function Header({
             <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
               Reporte de Actividad: Métricas y KPIs
             </p>
-            <div style={{ marginTop: '2px' }}>
+            <div style={{ marginTop: '6px' }}>
               <img
                 src={neoomaLogo}
                 alt="NEOOMA — The Breath of Transformation"
                 style={{
-                  height: '22px',
+                  height: '42px',
                   width: 'auto',
+                  maxWidth: '220px',
                   display: 'block',
                   objectFit: 'contain'
                 }}

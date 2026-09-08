@@ -1154,7 +1154,7 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
           {/* 5. Comunidad Skool */}
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: '3px solid #0284c7', borderRadius: '10px', padding: '14px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Comunidad Skool</span>
+              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Comunidad GHL</span>
               <div style={{ padding: '5px', borderRadius: '6px', background: '#e0f2fe', color: '#0284c7' }}>
                 <Share2 size={14} />
               </div>
