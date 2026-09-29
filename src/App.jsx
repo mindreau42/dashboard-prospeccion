@@ -245,35 +245,83 @@ export default function App() {
   const callersDataRef = useRef(callersData);
   useEffect(() => { callersDataRef.current = callersData; }, [callersData]);
 
-  // ── Global Live Multi-User Auto-Sync (Every 25s + on window focus) ──
-  const performLiveSync = useCallback(async () => {
-    try {
-      // 0. Sync central users & persistent state from server
-      fetch('/api/state')
-        .then(res => res.json())
-        .then(serverState => {
-          if (serverState && typeof serverState === 'object') {
-            if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
-              setUsers(serverState.users);
-            }
-          }
-        })
-        .catch(() => {});
+  // ── Smart Sync — tracks last fetch time to avoid redundant Sheets calls ──
+  const lastSheetsFetchRef = useRef(0);       // timestamp of last Google Sheets fetch
+  const lastServerPollRef  = useRef(0);       // timestamp of last /api/state GET
+  const SHEETS_INTERVAL_MS = 5 * 60 * 1000;  // fetch Sheets every 5 minutes
+  const SERVER_POLL_MS     = 5 * 60 * 1000;  // poll /api/state every 5 minutes
 
-      const currentGroups = groupsDataRef.current;
+  // ── Global Live Multi-User Auto-Sync (Smart throttled — saves ~97% of API calls) ──
+  const performLiveSync = useCallback(async (force = false) => {
+    const now = Date.now();
+
+    try {
+      // 0. Sync users & state from server — only every 5 min (not every 25s)
+      if (force || now - lastServerPollRef.current >= SERVER_POLL_MS) {
+        lastServerPollRef.current = now;
+        fetch('/api/state')
+          .then(res => res.json())
+          .then(serverState => {
+            if (serverState && typeof serverState === 'object') {
+              if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
+                setUsers(serverState.users);
+              }
+              // Sync groupsData from server if it has records (another user may have updated)
+              if (serverState.groupsData) {
+                setGroupsData(prev => {
+                  const merged = { ...prev };
+                  Object.entries(serverState.groupsData).forEach(([k, v]) => {
+                    // Only adopt server records if they are newer (more records) than what we have
+                    const localCount = prev[k]?.records?.length || 0;
+                    const serverCount = v?.records?.length || 0;
+                    if (serverCount > localCount || (v?.lastSync && v.lastSync !== prev[k]?.lastSync)) {
+                      merged[k] = {
+                        ...prev[k],
+                        ...v,
+                        // Always protect URL — never overwrite with empty
+                        url: v.url || prev[k]?.url || ''
+                      };
+                    }
+                  });
+                  return merged;
+                });
+              }
+              if (serverState.callersData) {
+                setCallersData(prev => {
+                  const merged = { ...prev };
+                  Object.entries(serverState.callersData).forEach(([k, v]) => {
+                    const localCount = prev[k]?.callerRecords?.length || 0;
+                    const serverCount = v?.callerRecords?.length || 0;
+                    if (serverCount > localCount || (v?.lastSync && v.lastSync !== prev[k]?.lastSync)) {
+                      merged[k] = { ...prev[k], ...v, sheetUrl: v.sheetUrl || prev[k]?.sheetUrl || '' };
+                    }
+                  });
+                  return merged;
+                });
+              }
+            }
+          })
+          .catch(() => {});
+      }
+
+      // 1-3. Fetch Google Sheets — only every 5 min (not every 25s)
+      if (!force && now - lastSheetsFetchRef.current < SHEETS_INTERVAL_MS) return;
+      lastSheetsFetchRef.current = now;
+
+      const currentGroups  = groupsDataRef.current;
       const currentCallers = callersDataRef.current;
 
       // 1. Sync Setters Oficiales ONLY if currently linked
-      const oficialesUrl = (currentGroups?.['Setters Oficiales']?.url || '').trim();
+      const oficialesUrl    = (currentGroups?.['Setters Oficiales']?.url || '').trim();
       const oficialesSource = currentGroups?.['Setters Oficiales']?.sourceName || '';
       if (oficialesUrl && !oficialesSource.includes('desvinculado') && !oficialesSource.includes('limpiado')) {
         fetchGoogleSheetData(oficialesUrl)
           .then(res => {
             if (res && Array.isArray(res.records) && res.records.length > 0) {
-              const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+              const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
               setGroupsData(prev => {
                 const currentUrl = (prev?.['Setters Oficiales']?.url || '').trim();
-                if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
+                if (!currentUrl) return prev;
                 const next = {
                   ...prev,
                   'Setters Oficiales': {
@@ -281,10 +329,10 @@ export default function App() {
                     records: res.records,
                     url: oficialesUrl,
                     sourceName: `Google Sheets (${res.rowCount} registros)`,
-                    lastSync: now
+                    lastSync: syncTime
                   }
                 };
-                // ── PERSIST to server so all users see fresh data ──
+                // Persist once after Sheets fetch — not on every poll cycle
                 saveStateToServer({ groupsData: next });
                 return next;
               });
@@ -294,16 +342,16 @@ export default function App() {
       }
 
       // 2. Sync Setters Aspirantes ONLY if currently linked
-      const aspirantesUrl = (currentGroups?.['Setters Aspirantes']?.url || '').trim();
+      const aspirantesUrl    = (currentGroups?.['Setters Aspirantes']?.url || '').trim();
       const aspirantesSource = currentGroups?.['Setters Aspirantes']?.sourceName || '';
       if (aspirantesUrl && !aspirantesSource.includes('desvinculado') && !aspirantesSource.includes('limpiado')) {
         fetchGoogleSheetData(aspirantesUrl)
           .then(res => {
             if (res && Array.isArray(res.records) && res.records.length > 0) {
-              const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+              const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
               setGroupsData(prev => {
                 const currentUrl = (prev?.['Setters Aspirantes']?.url || '').trim();
-                if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
+                if (!currentUrl) return prev;
                 const next = {
                   ...prev,
                   'Setters Aspirantes': {
@@ -311,10 +359,9 @@ export default function App() {
                     records: res.records,
                     url: aspirantesUrl,
                     sourceName: `Google Sheets (${res.rowCount} registros)`,
-                    lastSync: now
+                    lastSync: syncTime
                   }
                 };
-                // ── PERSIST to server so all users see fresh data ──
                 saveStateToServer({ groupsData: next });
                 return next;
               });
@@ -330,10 +377,10 @@ export default function App() {
           fetchSupervisorSheetData(callerUrl)
             .then(res => {
               if (res && (Array.isArray(res.callerRecords) || Array.isArray(res.scorecardReports))) {
-                const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
                 setCallersData(prev => {
                   const currentUrl = (prev?.[callerKey]?.sheetUrl || '').trim();
-                  if (!currentUrl) return prev; // If unlinked by user, do NOT re-insert
+                  if (!currentUrl) return prev;
                   const next = {
                     ...prev,
                     [callerKey]: {
@@ -341,10 +388,9 @@ export default function App() {
                       callerRecords: res.callerRecords || [],
                       scorecardReports: res.scorecardReports || [],
                       sheetUrl: callerUrl,
-                      lastSync: now
+                      lastSync: syncTime
                     }
                   };
-                  // ── PERSIST to server so all users see fresh data ──
                   saveStateToServer({ callersData: next });
                   return next;
                 });
@@ -354,58 +400,38 @@ export default function App() {
         }
       });
     } catch (_) {}
-  }, [saveStateToServer]);
+  }, [saveStateToServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // 1. Run immediately on mount
-    performLiveSync();
+    // 1. Force full sync on mount (fetches Sheets + server state)
+    performLiveSync(true);
 
-    // 2. Auto-polling every 25 seconds in background
-    const interval = setInterval(performLiveSync, 25000);
+    // 2. Background check every 5 minutes — throttle guards prevent redundant calls
+    const interval = setInterval(() => performLiveSync(), SHEETS_INTERVAL_MS);
 
-    // 3. Immediate sync on window focus (when switching to the browser tab)
-    const handleFocus = () => performLiveSync();
-    window.addEventListener('focus', handleFocus);
-    
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') performLiveSync();
+    // 3. On window focus: only poll server state (not Sheets) — much lighter call
+    const handleFocus = () => {
+      const now = Date.now();
+      if (now - lastServerPollRef.current >= 60_000) { // at most once per minute on focus
+        lastServerPollRef.current = 0; // force server poll on next sync
+        performLiveSync();
+      }
     };
-    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
 
-    // 4. Cross-tab storage sync
+    // 4. Cross-tab storage sync (localStorage events — zero API calls)
     const handleStorage = (e) => {
-      if (e.key === SK.GROUPS) {
-        setGroupsData(load(SK.GROUPS, DEFAULT_GROUPS_DATA));
-      }
-      if (e.key === SK.CALLERS_DATA) {
-        setCallersData(load(SK.CALLERS_DATA, DEFAULT_CALLERS_DATA));
-      }
+      if (e.key === SK.GROUPS)       setGroupsData(load(SK.GROUPS, DEFAULT_GROUPS_DATA));
+      if (e.key === SK.CALLERS_DATA) setCallersData(load(SK.CALLERS_DATA, DEFAULT_CALLERS_DATA));
     };
     window.addEventListener('storage', handleStorage);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [performLiveSync]);
-
-  // ── Session Keep-Alive Ping (every 30s) — Multi-session: never forces logout ──
-  useEffect(() => {
-    if (!currentSession?.id) return;
-
-    const ping = () => {
-      fetch('/api/auth/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentSession.id })
-      }).catch(() => {});
-    };
-
-    const heartbeatInterval = setInterval(ping, 30000);
-    return () => clearInterval(heartbeatInterval);
-  }, [currentSession?.id]);
+  }, [performLiveSync]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Login / Logout Handlers with Security Checks ──
   const handleLogin = (userOrUsername, maybePassword) => {
@@ -840,6 +866,9 @@ export default function App() {
         await Promise.all(syncPromises);
         // Persist synced state to server
         saveStateToServer({ groupsData, callersData });
+        // Reset auto-sync timers — data is fresh, no need to re-fetch for 5 min
+        lastSheetsFetchRef.current = Date.now();
+        lastServerPollRef.current  = Date.now();
         setQuickSyncMsg(`✅ Sincronización exitosa: ${syncedChannels.join(' · ')} actualizados a las ${now}.`);
       }
 

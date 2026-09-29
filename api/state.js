@@ -125,8 +125,41 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const state = await getPersistedState();
+
+      // ── Strip heavy records from the response ──
+      // Records are fetched directly from Google Sheets by the browser.
+      // Sending them through Vercel costs Origin Transfer bandwidth (limit: 10 GB/month).
+      // We only send lightweight metadata: url, sourceName, lastSync, user list.
+      const lightGroupsData = {};
+      Object.entries(state.groupsData || {}).forEach(([k, v]) => {
+        lightGroupsData[k] = {
+          url:        v.url        || '',
+          sourceName: v.sourceName || '',
+          lastSync:   v.lastSync   || '',
+          records:    []   // client fetches from Sheets directly
+        };
+      });
+
+      const lightCallersData = {};
+      Object.entries(state.callersData || {}).forEach(([k, v]) => {
+        lightCallersData[k] = {
+          name:             v.name       || '',
+          sheetUrl:         v.sheetUrl   || '',
+          lastSync:         v.lastSync   || '',
+          callerRecords:    [],   // client fetches from Sheets directly
+          scorecardReports: []
+        };
+      });
+
+      const lightState = {
+        groupsData:   lightGroupsData,
+        callersData:  lightCallersData,
+        adminReports: [],   // admin reports are loaded via Excel upload, not stored in API
+        users:        state.users
+      };
+
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      return res.status(200).json(state);
+      return res.status(200).json(lightState);
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
