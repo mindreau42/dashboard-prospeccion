@@ -193,13 +193,32 @@ export default function App() {
     };
   }, [isExcelModalOpen, isGoogleSheetsModalOpen, isUserManagementOpen, isProfileModalOpen, isClearConfirmOpen]);
 
-  // ── Helper to persist state updates to the central Node.js server on PC ──
+  // ── Helper to persist state updates (Ultra-lightweight: strips heavy records before network call) ──
   const saveStateToServer = useCallback((updatedPartial) => {
     try {
+      const payload = { ...updatedPartial };
+      if (payload.groupsData) {
+        payload.groupsData = Object.fromEntries(
+          Object.entries(payload.groupsData).map(([k, v]) => [
+            k,
+            { url: v.url || '', sourceName: v.sourceName || '', lastSync: v.lastSync || '' }
+          ])
+        );
+      }
+      if (payload.callersData) {
+        payload.callersData = Object.fromEntries(
+          Object.entries(payload.callersData).map(([k, v]) => [
+            k,
+            { name: v.name || '', sheetUrl: v.sheetUrl || '', lastSync: v.lastSync || '' }
+          ])
+        );
+      }
+      payload.adminReports = [];
+
       fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedPartial)
+        body: JSON.stringify(payload)
       }).catch(() => {});
     } catch (_) {}
   }, []);
