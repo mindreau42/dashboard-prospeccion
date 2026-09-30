@@ -97,20 +97,43 @@ async function savePersistedState(incoming) {
     users: incoming.users !== undefined ? incoming.users : current.users
   };
 
+  // ── STRIP HEAVY RECORDS: Supabase only stores URLs, metadata and users (< 2 KB) ──
+  // Google Sheets records are parsed client-side in the browser, NEVER stored in PostgreSQL
+  const lightGroups = {};
+  if (merged.groupsData) {
+    for (const [k, v] of Object.entries(merged.groupsData)) {
+      lightGroups[k] = {
+        url: v.url || '',
+        sourceName: v.sourceName || '',
+        lastSync: v.lastSync || ''
+      };
+    }
+  }
+  const lightCallers = {};
+  if (merged.callersData) {
+    for (const [k, v] of Object.entries(merged.callersData)) {
+      lightCallers[k] = {
+        name: v.name || '',
+        sheetUrl: v.sheetUrl || '',
+        lastSync: v.lastSync || ''
+      };
+    }
+  }
+
   await supabaseFetch('/app_state', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates',
     body: JSON.stringify({
       id: 'main_state',
-      groups_data: merged.groupsData,
-      callers_data: merged.callersData,
-      admin_reports: merged.adminReports,
+      groups_data: lightGroups,
+      callers_data: lightCallers,
+      admin_reports: [],
       users_data: merged.users || [],
       updated_at: new Date().toISOString()
     })
   });
 
-  return merged;
+  return { ...merged, groupsData: lightGroups, callersData: lightCallers };
 }
 
 export default async function handler(req, res) {
