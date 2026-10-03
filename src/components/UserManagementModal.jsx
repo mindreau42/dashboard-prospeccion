@@ -87,8 +87,8 @@ export default function UserManagementModal({
     setEditId(u.id);
     setFullName(u.fullName || '');
     setUsername((u.username || '').replace(/\s+/g, ''));
-    setPassword((u.password || '').replace(/\s+/g, ''));
-    setOriginalPassword((u.password || '').replace(/\s+/g, ''));
+    setPassword('');
+    setOriginalPassword('');
     setRole(u.role || 'setter');
     if (u.group && !availableGroups.includes(u.group)) {
       setIsCustomGroup(true);
@@ -120,37 +120,39 @@ export default function UserManagementModal({
       return;
     }
 
-    const isPasswordModified = Boolean(password.trim() && password !== originalPassword);
+    const isPasswordModified = Boolean(password.trim().length > 0);
 
     // Enforce strict password validation for new users or when password is changed
     if (!isEditing || isPasswordModified) {
-      if (!password.trim()) {
+      if (!isEditing && !password.trim()) {
         setFormError('Debes ingresar una contraseña para el usuario.');
         return;
       }
-      if (!hasLength) {
-        setFormError('La contraseña debe tener al menos 6 caracteres.');
-        return;
-      }
-      if (!hasUpper) {
-        setFormError('La contraseña debe incluir al menos una letra mayúscula (A-Z).');
-        return;
-      }
-      if (!hasLower) {
-        setFormError('La contraseña debe incluir al menos una letra minúscula (a-z).');
-        return;
-      }
-      if (!hasNumber) {
-        setFormError('La contraseña debe incluir al menos un número (0-9).');
-        return;
-      }
-      if (!hasSpecial) {
-        setFormError('La contraseña debe incluir al menos un carácter especial (@$!%*?&#_-).');
-        return;
-      }
-      if (!hasNoSpaces) {
-        setFormError('La contraseña no puede contener espacios en blanco.');
-        return;
+      if (isPasswordModified) {
+        if (!hasLength) {
+          setFormError('La contraseña debe tener al menos 6 caracteres.');
+          return;
+        }
+        if (!hasUpper) {
+          setFormError('La contraseña debe incluir al menos una letra mayúscula (A-Z).');
+          return;
+        }
+        if (!hasLower) {
+          setFormError('La contraseña debe incluir al menos una letra minúscula (a-z).');
+          return;
+        }
+        if (!hasNumber) {
+          setFormError('La contraseña debe incluir al menos un número (0-9).');
+          return;
+        }
+        if (!hasSpecial) {
+          setFormError('La contraseña debe incluir al menos un carácter especial (@$!%*?&#_-).');
+          return;
+        }
+        if (!hasNoSpaces) {
+          setFormError('La contraseña no puede contener espacios en blanco.');
+          return;
+        }
       }
     }
 
@@ -175,11 +177,13 @@ export default function UserManagementModal({
       updatedList = userList.map(u => {
         if (u.id === editId) {
           const passData = isPasswordModified
-            ? { ...hashPassword(cleanPass), password: cleanPass }
-            : { hash: u.hash, salt: u.salt, password: u.password };
+            ? hashPassword(cleanPass)
+            : { hash: u.hash, salt: u.salt };
+
+          const { password: _p, ...safeUser } = u;
 
           return {
-            ...u,
+            ...safeUser,
             fullName: cleanFullName,
             username: cleanUsername,
             ...passData,
@@ -188,7 +192,8 @@ export default function UserManagementModal({
             callerKey: u.callerKey || (role === 'caller' ? 'Caller 1' : null)
           };
         }
-        return u;
+        const { password: _p, ...safeUser } = u;
+        return safeUser;
       });
     } else {
       const { hash, salt } = hashPassword(cleanPass);
@@ -196,7 +201,6 @@ export default function UserManagementModal({
         id: 'usr_' + Date.now(),
         fullName: cleanFullName,
         username: cleanUsername,
-        password: cleanPass,
         hash,
         salt,
         role,
@@ -205,7 +209,7 @@ export default function UserManagementModal({
         avatar: role === 'admin' ? '👑' : role === 'gerencia' ? '🏆' : role === 'caller' ? '📞' : '🎯',
         createdAt: new Date().toLocaleDateString('es-MX')
       };
-      updatedList = [...userList, newUser];
+      updatedList = [...userList.map(({ password: _p, ...su }) => su), newUser];
     }
 
     setUserList(updatedList);
@@ -378,11 +382,11 @@ export default function UserManagementModal({
                 {/* Contraseña */}
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    Contraseña *
+                    Contraseña {isEditing ? '(Opcional — Dejar vacía para conservar actual)' : '*'}
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. ClaveSegura@2026"
+                    placeholder={isEditing ? "•••••••• (conservar contraseña actual)" : "Ej. ClaveSegura@2026"}
                     value={password}
                     onKeyDown={(e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                     onChange={(e) => setPassword(e.target.value.replace(/\s+/g, ''))}
@@ -611,17 +615,20 @@ export default function UserManagementModal({
                         <td style={{ fontWeight: 800, color: '#0f172a' }}>{u.fullName || '—'}</td>
                         <td style={{ color: '#2563eb', fontWeight: 700 }}>{u.username}</td>
                         <td>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontFamily: 'monospace', color: '#64748b', fontSize: '12px' }}>
-                              {isVisible ? u.password : '••••••••'}
-                            </span>
-                            <button
-                              onClick={() => togglePasswordVisibility(u.id)}
-                              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', padding: '2px' }}
-                            >
-                              {isVisible ? <EyeOff size={13} /> : <Eye size={13} />}
-                            </button>
-                          </div>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            color: '#16a34a',
+                            fontSize: '11px',
+                            fontWeight: 700
+                          }}>
+                            <Lock size={11} /> Cifrada con Salt
+                          </span>
                         </td>
                         <td>
                           {getRoleBadge(u.role)}

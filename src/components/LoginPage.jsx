@@ -81,20 +81,14 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
 
       if (!nameMatches) return false;
 
-      const storedPass = String(u.password || '').trim();
-      const storedPassNoSpace = storedPass.replace(/\s+/g, '');
       const cleanPassNoSpace = cleanPass.replace(/\s+/g, '');
 
-      const plainMatches = Boolean(
-        storedPass === cleanPass ||
-        (storedPassNoSpace && storedPassNoSpace === cleanPassNoSpace)
-      );
       const hashMatches = Boolean(
         (u.hash && verifyPassword(cleanPass, u.hash, u.salt)) ||
         (u.hash && verifyPassword(cleanPassNoSpace, u.hash, u.salt))
       );
 
-      return plainMatches || hashMatches;
+      return hashMatches;
     });
 
     if (found) {
@@ -112,7 +106,8 @@ export default function LoginPage({ onLogin, users = [], sessionAlertMessage = '
         }
       } catch (_) {}
 
-      onLogin({ ...found, sessionToken }, cleanPass);
+      const { password: _p, ...safeFound } = found;
+      onLogin({ ...safeFound, sessionToken });
     } else {
       const attemptResult = recordFailedAttempt();
 

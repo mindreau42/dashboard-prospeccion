@@ -14,6 +14,7 @@ import ExcelUploadModal from './components/ExcelUploadModal';
 import GoogleSheetsModal from './components/GoogleSheetsModal';
 import UserManagementModal from './components/UserManagementModal';
 import UserProfileModal from './components/UserProfileModal';
+import ShareConnectionModal from './components/ShareConnectionModal';
 import packageJson from '../package.json';
 
 const APP_VERSION = `v${packageJson.version}`;
@@ -23,6 +24,7 @@ import { INITIAL_SUPERVISOR_CALLER, INITIAL_SUPERVISOR_SCORECARD } from './data/
 import { fetchGoogleSheetData, fetchSupervisorSheetData } from './utils/googleSheetsParser';
 import {
   hashPassword,
+  verifyPassword,
   lockNavigationHistoryOnLogout,
   sanitizeInput,
   encryptStoragePayload,
@@ -48,12 +50,19 @@ const SK = {
 };
 
 const DEFAULT_USERS = [
-  { id: 'usr_admin', fullName: 'Administrador Principal', username: 'admin', hash: '458a9a7114f3c46f4d475f9b9285942139cc1a4a4b7d3773b705c68723bdb481', salt: 'salt_admin_2026', role: 'admin', group: null, callerKey: null, avatar: '👑', createdAt: '2026-08-18' },
-  { id: 'usr_gerencia', fullName: 'Gerencia', username: 'gerencia', hash: '458a9a7114f3c46f4d475f9b9285942139cc1a4a4b7d3773b705c68723bdb481', salt: 'salt_admin_2026', role: 'gerencia', group: null, callerKey: null, avatar: '🏆', createdAt: '2026-08-28' },
-  { id: 'usr_s1', fullName: 'Setter Canal A (Oficiales)', username: 'setter1', hash: 'c2ea9fa768855f75ee04d2d132074e3671af5259e604eda9f93f6cb00d490e5d', salt: 'salt_setter1_2026', role: 'setter', group: 'Setters Oficiales', callerKey: null, avatar: '🎯', createdAt: '2026-08-18' },
-  { id: 'usr_s2', fullName: 'Setter Canal B (Aspirantes)', username: 'setter2', hash: '36e91b5ed0e8a5aad1d3aae0aa758e27dc3f87ee014242c43845fc62569eb428', salt: 'salt_setter2_2026', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🚀', createdAt: '2026-08-18' },
-  { id: 'usr_c1', fullName: 'Caller 1 — Nury', username: 'caller1', hash: '37d3abffe256a4583837b808de61490d04dffd49532590f1ae8c00521d9c4015', salt: 'salt_caller1_2026', role: 'caller', group: null, callerKey: 'Caller 1', avatar: '📞', createdAt: '2026-08-18' },
-  { id: 'usr_c2', fullName: 'Caller 2', username: 'caller2', hash: '138f2801800bd0d0ab027d93cebc050bc5f910b475d6e4a7e64b2b604e01493e', salt: 'salt_caller2_2026', role: 'caller', group: null, callerKey: 'Caller 2', avatar: '📞', createdAt: '2026-08-18' }
+  { id: 'usr_admin', fullName: 'Administrador', username: 'Admin', hash: '48b804297c627ef74b89950425177b5fad9318da02f693017fedc4b6cceede75', salt: '55p5lb08ckxmtf84be2', role: 'admin', group: null, callerKey: null, avatar: '👑', createdAt: '2026-08-18' },
+  { id: 'usr_s1', fullName: 'Canal A', username: 'SDR', hash: '9950d2b1c73f61be8ebdcb3d41c19eedf11a1397d766968cf3999e2d4a85c65a', salt: 'mmiznx8c8zmtf90yeg', role: 'setter', group: 'Setters Oficiales', callerKey: null, avatar: '🎯', createdAt: '2026-08-18' },
+  { id: 'usr_s2', fullName: 'Canal B', username: 'Aspirantes', hash: '9a0455ebb21b2fe5f356239d4d5c3394dc1138d474c8206454273ff3d2b27088', salt: 'tfnmswpwg4rmtk9m7vz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🚀', createdAt: '2026-08-18' },
+  { id: 'usr_c1', fullName: 'Canal C', username: 'Nury', hash: 'f7935e4cff692b2e4007677d0598a4540495d7b3ee309084802e001d1aa2b04e', salt: '0xfjvk395zmomthesx88', role: 'gerencia', group: null, callerKey: 'Caller 1', avatar: '📞', createdAt: '2026-08-18' },
+  { id: 'usr_c2', fullName: 'Principal', username: 'Director', hash: 'de6a42e8ae4e76f17a2f036f61056d755e4f91d4b0f53c9e700d754bb0d7f150', salt: '6ur7sa27wjwmthet4fo', role: 'gerencia', group: null, callerKey: 'Caller 2', avatar: '📞', createdAt: '2026-08-18' },
+  { id: 'usr_1788364178077', fullName: 'Luz Cardona', username: 'Luz', hash: '77e2d692b081d1f2162782d70029d0a7c1a71e5efb44c830e1eeb003ee67b94a', salt: 'jokjslm7eomtk9uv8c', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788364301519', fullName: 'Claudia Vázquez', username: 'Claudia', hash: '6e407286cd513bd581b39efa4d033c013d13f4033aa21add09fdd89275c4f6d6', salt: 'qh2pbqls0mlmtk9xihb', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365685815', fullName: 'Monica Rodríguez', username: 'Monica', hash: '4ad7cba0a344df9fb45c4d2ef6bd8504500705224726d735176fc5e33a1706cf', salt: 'hj6z2ezgkovmtkar6lz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365752926', fullName: 'Lisbeth Garrido', username: 'Lisbeth', hash: '670acc7980460702746769b14e480fd52d6c7881973597964958b1617d64bd73', salt: 'u9m3t4fhlimtkasme5', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365838607', fullName: 'Silvia Corzo', username: 'Silvia', hash: '70865b6023e460476a7916cd7dacfe3387efa2bd7b465ae2037d986a91cf34e0', salt: '9g89dxi7cf4mtkaugi7', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365918491', fullName: 'Ebelin Hernandez', username: 'Ebelin', hash: 'dd40141ca1c57edc2ed33db2b0c8f9f38c784d27fa3c5c4d005006cd00852b67', salt: '4nrtmyal7lumtkaw657', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365986021', fullName: 'Leydi Lopez', username: 'Leydi', hash: '0025f62fdb8bef9318f90b37c5e8fc8677c1e0fa94969eb0ea16a15a44b530aa', salt: 'scwlxtj95kmtkaxm91', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1790266050584', fullName: 'Secundario', username: 'Team', hash: '8c7d1ac160e43901d43448c695d3b3f420e1ec762d263d009239525529204ddd', salt: 'kqkz94ok02kmufq6lg8', role: 'gerencia', group: null, callerKey: null, avatar: '🏆', createdAt: '24/9/2026' }
 ];
 
 // ── Real Google Sheet URLs (pre-configured, loaded automatically on startup) ──
@@ -137,25 +146,23 @@ export default function App() {
   // ── Authentication & Session State (Strict single session per user) ──
   const [users, setUsers] = useState(() => {
     const loaded = load(SK.USERS, null);
-    if (loaded && Array.isArray(loaded) && loaded.length > 0) {
-      return loaded;
-    }
-    return DEFAULT_USERS;
+    const source = (loaded && Array.isArray(loaded) && loaded.length > 0) ? loaded : DEFAULT_USERS;
+    return source.map(({ password, ...u }) => u);
   });
   const [currentSession, setCurrentSession] = useState(() => loadSession());
   const [loginError, setLoginError] = useState('');
   const [sessionAlertMessage, setSessionAlertMessage] = useState('');
 
-  // ── Isolated Groups Data Store (In-Memory Live State) ──
-  const [groupsData, setGroupsData] = useState(DEFAULT_GROUPS_DATA);
+  // ── Isolated Groups Data Store (Persistent in LocalStorage + Live State) ──
+  const [groupsData, setGroupsData] = useState(() => load(SK.GROUPS, DEFAULT_GROUPS_DATA));
 
   // ── Admin Global Uploaded Data (In-Memory Live State) ──
   const [adminReports, setAdminReports] = useState([]);
   const [adminSourceInfo, setAdminSourceInfo] = useState({ type: 'sheets', name: 'Google Sheets' });
   const [adminSheetUrl, setAdminSheetUrl] = useState('');
 
-  // ── Callers Data Store (In-Memory Live State) ──
-  const [callersData, setCallersData] = useState(DEFAULT_CALLERS_DATA);
+  // ── Callers Data Store (Persistent in LocalStorage + Live State) ──
+  const [callersData, setCallersData] = useState(() => load(SK.CALLERS_DATA, DEFAULT_CALLERS_DATA));
   const [selectedCallerKey, setSelectedCallerKey] = useState('Todos');
 
   // ── Active Navigation View ──
@@ -171,6 +178,7 @@ export default function App() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // ── Centralized Modal Scroll Lock with Safe Restoration Guarantee ──
   useEffect(() => {
@@ -179,7 +187,8 @@ export default function App() {
       isGoogleSheetsModalOpen ||
       isUserManagementOpen ||
       isProfileModalOpen ||
-      isClearConfirmOpen
+      isClearConfirmOpen ||
+      isShareModalOpen
     );
 
     if (isAnyModalActive) {
@@ -193,68 +202,50 @@ export default function App() {
     };
   }, [isExcelModalOpen, isGoogleSheetsModalOpen, isUserManagementOpen, isProfileModalOpen, isClearConfirmOpen]);
 
-  // ── Helper to persist state updates (Ultra-lightweight: strips heavy records before network call) ──
+  // ── Helper to persist state updates to local central server ──
   const saveStateToServer = useCallback((updatedPartial) => {
     try {
-      const payload = { ...updatedPartial };
-      if (payload.groupsData) {
-        payload.groupsData = Object.fromEntries(
-          Object.entries(payload.groupsData).map(([k, v]) => [
-            k,
-            { url: v.url || '', sourceName: v.sourceName || '', lastSync: v.lastSync || '' }
-          ])
-        );
-      }
-      if (payload.callersData) {
-        payload.callersData = Object.fromEntries(
-          Object.entries(payload.callersData).map(([k, v]) => [
-            k,
-            { name: v.name || '', sheetUrl: v.sheetUrl || '', lastSync: v.lastSync || '' }
-          ])
-        );
-      }
-      payload.adminReports = [];
-
       fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(updatedPartial)
       }).catch(() => {});
     } catch (_) {}
   }, []);
 
-  // ── Persistence Effects (Users and login session in localStorage; records in Central Server) ──
+  // ── Persistence Effects (Local browser storage is instant and 100% network-free) ──
   useEffect(() => { save(SK.USERS, users); }, [users]);
   useEffect(() => { save(SK.SESSION, currentSession); }, [currentSession]);
+  useEffect(() => { save(SK.GROUPS, groupsData); }, [groupsData]);
+  useEffect(() => { save(SK.CALLERS_DATA, callersData); }, [callersData]);
+
   useEffect(() => {
     // 1. Fetch persistent server state from central server on PC
     fetch('/api/state')
       .then(res => res.json())
       .then(serverState => {
         if (serverState && typeof serverState === 'object') {
-          if (serverState.groupsData) {
-            // Protect Setters Oficiales URL — never overwrite existing URL with empty string
-            const incoming = serverState.groupsData;
-            if (!incoming['Setters Oficiales']?.url) {
-              incoming['Setters Oficiales'] = {
-                ...incoming['Setters Oficiales'],
-                url: SHEET_URL_SETTERS_OFICIALES,
-                sourceName: incoming['Setters Oficiales']?.sourceName || 'Google Sheets (Setters Oficiales)'
-              };
-            }
-            setGroupsData(incoming);
+          if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
+            setUsers(serverState.users.map(({ password, ...u }) => u));
           }
+          if (serverState.groupsData) setGroupsData(serverState.groupsData);
           if (serverState.callersData) setCallersData(serverState.callersData);
           if (serverState.adminReports) setAdminReports(serverState.adminReports);
-          if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
-            setUsers(serverState.users);
+
+          // Si el servidor local aún no tiene registros cargados o los callers tienen registros desactualizados sin nombres, sincronizamos
+          const totalRecords = Object.values(serverState.groupsData || {}).reduce((acc, g) => acc + (g.records?.length || 0), 0);
+          const totalCallerRecords = Object.values(serverState.callersData || {}).reduce((acc, c) => acc + (c.callerRecords?.length || 0), 0);
+          const callersNeedRefresh = Object.values(serverState.callersData || {}).some(c => {
+            const recs = c.callerRecords || [];
+            return recs.length > 0 && recs.slice(0, 10).every(r => !r.nombre || r.nombre === '—');
+          });
+
+          if (totalRecords === 0 || totalCallerRecords === 0 || callersNeedRefresh) {
+            performLiveSync(true, serverState.groupsData, serverState.callersData);
           }
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        performLiveSync();
-      });
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── State refs to guarantee performLiveSync always inspects current user choices ──
@@ -268,67 +259,34 @@ export default function App() {
   const lastSheetsFetchRef = useRef(0);       // timestamp of last Google Sheets fetch
   const lastServerPollRef  = useRef(0);       // timestamp of last /api/state GET
   const SHEETS_INTERVAL_MS = 5 * 60 * 1000;  // fetch Sheets every 5 minutes
-  const SERVER_POLL_MS     = 5 * 60 * 1000;  // poll /api/state every 5 minutes
+  const SERVER_POLL_MS     = 60 * 1000;      // poll local /api/state every minute
 
-  // ── Global Live Multi-User Auto-Sync (Smart throttled — saves ~97% of API calls) ──
-  const performLiveSync = useCallback(async (force = false) => {
+  // ── Global Live Multi-User Auto-Sync (Centralized Server as Single Source of Truth) ──
+  const performLiveSync = useCallback(async (forceSheets = false, customGroups = null, customCallers = null) => {
     const now = Date.now();
 
     try {
-      // 0. Sync users & state from server — only every 5 min (not every 25s)
-      if (force || now - lastServerPollRef.current >= SERVER_POLL_MS) {
-        lastServerPollRef.current = now;
-        fetch('/api/state')
-          .then(res => res.json())
-          .then(serverState => {
-            if (serverState && typeof serverState === 'object') {
-              if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
-                setUsers(serverState.users);
-              }
-              // Sync groupsData from server if it has records (another user may have updated)
-              if (serverState.groupsData) {
-                setGroupsData(prev => {
-                  const merged = { ...prev };
-                  Object.entries(serverState.groupsData).forEach(([k, v]) => {
-                    // Only adopt server records if they are newer (more records) than what we have
-                    const localCount = prev[k]?.records?.length || 0;
-                    const serverCount = v?.records?.length || 0;
-                    if (serverCount > localCount || (v?.lastSync && v.lastSync !== prev[k]?.lastSync)) {
-                      merged[k] = {
-                        ...prev[k],
-                        ...v,
-                        // Always protect URL — never overwrite with empty
-                        url: v.url || prev[k]?.url || ''
-                      };
-                    }
-                  });
-                  return merged;
-                });
-              }
-              if (serverState.callersData) {
-                setCallersData(prev => {
-                  const merged = { ...prev };
-                  Object.entries(serverState.callersData).forEach(([k, v]) => {
-                    const localCount = prev[k]?.callerRecords?.length || 0;
-                    const serverCount = v?.callerRecords?.length || 0;
-                    if (serverCount > localCount || (v?.lastSync && v.lastSync !== prev[k]?.lastSync)) {
-                      merged[k] = { ...prev[k], ...v, sheetUrl: v.sheetUrl || prev[k]?.sheetUrl || '' };
-                    }
-                  });
-                  return merged;
-                });
-              }
+      // 0. Poll state from local central server (consistent across all users)
+      fetch('/api/state')
+        .then(res => res.json())
+        .then(serverState => {
+          if (serverState && typeof serverState === 'object') {
+            if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
+              setUsers(serverState.users.map(({ password, ...u }) => u));
             }
-          })
-          .catch(() => {});
-      }
+            if (serverState.groupsData) setGroupsData(serverState.groupsData);
+            if (serverState.callersData) setCallersData(serverState.callersData);
+            if (serverState.adminReports) setAdminReports(serverState.adminReports);
+          }
+        })
+        .catch(() => {});
 
-      // 1-3. Fetch Google Sheets — only every 5 min (not every 25s)
-      if (!force && now - lastSheetsFetchRef.current < SHEETS_INTERVAL_MS) return;
+      // SOLO si forceSheets es true, descargamos de Google Sheets
+      if (!forceSheets) return;
       lastSheetsFetchRef.current = now;
 
-      const currentGroups  = groupsDataRef.current;
-      const currentCallers = callersDataRef.current;
+      const currentGroups  = customGroups  || groupsDataRef.current;
+      const currentCallers = customCallers || callersDataRef.current;
 
       // 1. Sync Setters Oficiales ONLY if currently linked
       const oficialesUrl    = (currentGroups?.['Setters Oficiales']?.url || '').trim();
@@ -461,7 +419,9 @@ export default function App() {
       found = userOrUsername;
     } else {
       found = users.find(
-        u => u.username.toLowerCase() === String(userOrUsername).toLowerCase() && u.password === maybePassword
+        u => u.username.toLowerCase() === String(userOrUsername).toLowerCase() && (
+          (u.hash && verifyPassword(maybePassword, u.hash, u.salt))
+        )
       );
     }
 
@@ -807,6 +767,9 @@ export default function App() {
       const syncPromises = [];
       const syncedChannels = [];
 
+      let updatedGroups = { ...groupsData };
+      let updatedCallers = { ...callersData };
+
       // 1. Sync Setters Oficiales only if actively linked
       const ofiUrl = (groupsData?.['Setters Oficiales']?.url || '').trim();
       if (ofiUrl) {
@@ -814,16 +777,13 @@ export default function App() {
           fetchGoogleSheetData(ofiUrl)
             .then(res => {
               if (res?.records) {
-                setGroupsData(prev => ({
-                  ...prev,
-                  'Setters Oficiales': {
-                    ...prev['Setters Oficiales'],
-                    records: res.records,
-                    url: ofiUrl,
-                    sourceName: `Google Sheets (${res.rowCount} registros)`,
-                    lastSync: now
-                  }
-                }));
+                updatedGroups['Setters Oficiales'] = {
+                  ...updatedGroups['Setters Oficiales'],
+                  records: res.records,
+                  url: ofiUrl,
+                  sourceName: `Google Sheets (${res.rowCount} registros)`,
+                  lastSync: now
+                };
                 syncedChannels.push(`Oficiales (${res.rowCount})`);
               }
             })
@@ -838,16 +798,13 @@ export default function App() {
           fetchGoogleSheetData(aspUrl)
             .then(res => {
               if (res?.records) {
-                setGroupsData(prev => ({
-                  ...prev,
-                  'Setters Aspirantes': {
-                    ...prev['Setters Aspirantes'],
-                    records: res.records,
-                    url: aspUrl,
-                    sourceName: `Google Sheets (${res.rowCount} registros)`,
-                    lastSync: now
-                  }
-                }));
+                updatedGroups['Setters Aspirantes'] = {
+                  ...updatedGroups['Setters Aspirantes'],
+                  records: res.records,
+                  url: aspUrl,
+                  sourceName: `Google Sheets (${res.rowCount} registros)`,
+                  lastSync: now
+                };
                 syncedChannels.push(`Aspirantes (${res.rowCount})`);
               }
             })
@@ -862,16 +819,13 @@ export default function App() {
           fetchSupervisorSheetData(callerUrl)
             .then(res => {
               if (res?.callerRecords) {
-                setCallersData(prev => ({
-                  ...prev,
-                  'Caller 1': {
-                    ...prev['Caller 1'],
-                    callerRecords: res.callerRecords,
-                    scorecardReports: res.scorecardReports,
-                    sheetUrl: callerUrl,
-                    lastSync: now
-                  }
-                }));
+                updatedCallers['Caller 1'] = {
+                  ...updatedCallers['Caller 1'],
+                  callerRecords: res.callerRecords,
+                  scorecardReports: res.scorecardReports,
+                  sheetUrl: callerUrl,
+                  lastSync: now
+                };
                 syncedChannels.push(`Callers (${res.callerRecords.length})`);
               }
             })
@@ -883,9 +837,11 @@ export default function App() {
         setQuickSyncMsg('ℹ️ No hay enlaces activos de Google Sheets vinculados.');
       } else {
         await Promise.all(syncPromises);
-        // Persist synced state to server
-        saveStateToServer({ groupsData, callersData });
-        // Reset auto-sync timers — data is fresh, no need to re-fetch for 5 min
+        setGroupsData(updatedGroups);
+        setCallersData(updatedCallers);
+        // Persist synced state to server with full records!
+        saveStateToServer({ groupsData: updatedGroups, callersData: updatedCallers });
+        // Reset auto-sync timers
         lastSheetsFetchRef.current = Date.now();
         lastServerPollRef.current  = Date.now();
         setQuickSyncMsg(`✅ Sincronización exitosa: ${syncedChannels.join(' · ')} actualizados a las ${now}.`);
@@ -920,6 +876,7 @@ export default function App() {
         onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
         onClearData={() => setIsClearConfirmOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
         onQuickSync={handleQuickSync}
         isQuickSyncing={isQuickSyncing}
         quickSyncMsg={quickSyncMsg}
@@ -1055,6 +1012,12 @@ export default function App() {
         onClose={() => setIsProfileModalOpen(false)}
         userSession={currentSession}
         onUpdateAvatar={handleUpdateAvatar}
+      />
+
+      {/* Share Connection Modal (Cloudflare Tunnel & Local LAN) */}
+      <ShareConnectionModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
 
       {/* Admin User Management Modal */}

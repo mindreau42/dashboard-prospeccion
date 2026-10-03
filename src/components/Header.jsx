@@ -32,13 +32,15 @@ export default function Header({
   const avatar = userSession?.avatar || '👤';
   const isImageAvatar = avatar && avatar.startsWith('data:image');
 
-  // Solo se muestra en la versión del instalador (local/túnel), nunca en Vercel
+  // Se muestra en la versión del instalador y siempre disponible para administradores
   const isInstallerVersion = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname.includes('trycloudflare.com') ||
     window.location.hostname.includes('ngrok') ||
-    window.location.port === '5185'
+    window.location.port === '5185' ||
+    role === 'admin' ||
+    role === 'gerencia'
   );
 
   return (
@@ -262,6 +264,7 @@ export default function Header({
               >
                 <FileSpreadsheet size={13} /> Cargar Excel
               </button>
+
             </div>
           </div>
         )}

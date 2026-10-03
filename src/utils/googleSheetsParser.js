@@ -121,20 +121,30 @@ export function fetchViaJsonp(spreadsheetId, gid, sheetName) {
         if (!data || !data.table) {
           return resolve([]);
         }
-        const cols = (data.table.cols || []).map((c, i) => (c && (c.label || c.id)) ? String(c.label || c.id).trim() : `Col_${i}`);
+        const cols = (data.table.cols || []).map((c, i) => {
+          const lbl = c && c.label ? String(c.label).trim() : '';
+          const cid = c && c.id ? String(c.id).trim() : '';
+          return lbl || cid || `Col_${i}`;
+        });
         const rows = (data.table.rows || []).map(r => {
           const rowObj = {};
           cols.forEach((colName, i) => {
-            if (!colName) return;
             const cell = r.c ? r.c[i] : null;
-            if (!cell) {
-              rowObj[colName] = '';
-            } else if (cell.f !== undefined && cell.f !== null) {
-              rowObj[colName] = cell.f;
-            } else if (cell.v !== undefined && cell.v !== null) {
-              rowObj[colName] = cell.v;
-            } else {
-              rowObj[colName] = '';
+            let val = '';
+            if (cell) {
+              if (cell.f !== undefined && cell.f !== null) {
+                val = cell.f;
+              } else if (cell.v !== undefined && cell.v !== null) {
+                val = cell.v;
+              }
+            }
+            if (colName) {
+              rowObj[colName] = val;
+            }
+            rowObj[`__col_${i}`] = val;
+            const cid = data.table.cols && data.table.cols[i] && data.table.cols[i].id;
+            if (cid && !rowObj[cid]) {
+              rowObj[cid] = val;
             }
           });
           return rowObj;
@@ -463,13 +473,31 @@ function parseSupervisorRows(rawRows, sheetUrl) {
       const callerRecords = [];
       let lastSeenFecha = '18-Ago-26';
 
-      rawRows.forEach((r) => {
-        const rawNombre = String(getVal(r, ['nombre', 'nombre completo', 'nombre y apellido', 'nombre del prospecto', 'prospecto', 'lead', 'contacto', 'cliente', 'persona', 'titular', 'alumno', 'name', 'full name']) || '').trim();
-        const rawFuente = String(getVal(r, ['fuente', 'origen', 'canal', 'source', 'lead source', 'fuente de origen', 'tipo de fuente']) || '').trim();
-        const rawRespuesta = String(getVal(r, ['respuesta', 'estado', 'status', 'calificacion']) || '').trim();
-        const rawContexto = String(getVal(r, ['contexto | opcional', 'contexto opcional', 'contexto', 'notas', 'observaciones', 'comentarios']) || '').trim();
-        const rawMensajes = String(getVal(r, ['mensajes 1-1', 'mensajes 1:1', 'mensajes 1 a 1', 'mensajes', 'mensajes whatsapp']) || '').trim();
-        const rawSkool = String(getVal(r, ['comunidad | skool', 'comunidad skool', 'comunidad |skool', 'comunidad|skool', 'skool', 'comunidad']) || '').trim();
+      rawRows.forEach((r, idx) => {
+        let rawNombre = String(getVal(r, ['nombre', 'nombre completo', 'nombre y apellido', 'nombre del prospecto', 'prospecto', 'lead', 'contacto', 'cliente', 'persona', 'titular', 'alumno', 'name', 'full name']) || '').trim();
+
+        // Detección robusta cuando la columna B / índice 1 no tiene encabezado o está en blanco
+        if (!rawNombre) {
+          if (r['__col_1'] && String(r['__col_1']).trim()) {
+            rawNombre = String(r['__col_1']).trim();
+          } else if (r['B'] && String(r['B']).trim()) {
+            rawNombre = String(r['B']).trim();
+          } else {
+            const keys = Object.keys(r);
+            const blankKey = keys.find(k => k.trim() === '' || k.startsWith('__EMPTY'));
+            if (blankKey && r[blankKey] && String(r[blankKey]).trim()) {
+              rawNombre = String(r[blankKey]).trim();
+            } else if (keys.length > 1 && r[keys[1]] && String(r[keys[1]]).trim()) {
+              rawNombre = String(r[keys[1]]).trim();
+            }
+          }
+        }
+
+        const rawFuente = String(getVal(r, ['fuente', 'origen', 'canal', 'source', 'lead source', 'fuente de origen', 'tipo de fuente']) || (r['__col_2'] || r['C'] || '')).trim();
+        const rawRespuesta = String(getVal(r, ['respuesta', 'estado', 'status', 'calificacion']) || (r['__col_3'] || r['D'] || '')).trim();
+        const rawContexto = String(getVal(r, ['contexto | opcional', 'contexto opcional', 'contexto', 'notas', 'observaciones', 'comentarios']) || (r['__col_7'] || r['H'] || '')).trim();
+        const rawMensajes = String(getVal(r, ['mensajes 1-1', 'mensajes 1:1', 'mensajes 1 a 1', 'mensajes', 'mensajes whatsapp']) || (r['__col_5'] || r['F'] || '')).trim();
+        const rawSkool = String(getVal(r, ['comunidad | skool', 'comunidad skool', 'comunidad |skool', 'comunidad|skool', 'skool', 'comunidad', 'comunidad | ghl', 'comunidad ghl', 'ghl']) || (r['__col_6'] || r['G'] || '')).trim();
 
         // Skip completely blank template rows (where all data columns are empty)
         if (!rawNombre && !rawFuente && !rawRespuesta && !rawContexto && !rawMensajes && !rawSkool) {
@@ -478,8 +506,10 @@ function parseSupervisorRows(rawRows, sheetUrl) {
 
         const keys = Object.keys(r);
         let rawDateVal = getVal(r, ['fecha', 'marca temporal', 'date', 'registro', 'timestamp']);
-        if (!rawDateVal && keys.length > 0) {
-          rawDateVal = r[keys[0]];
+        if (!rawDateVal) {
+          if (r['__col_0']) rawDateVal = r['__col_0'];
+          else if (r['A']) rawDateVal = r['A'];
+          else if (keys.length > 0) rawDateVal = r[keys[0]];
         }
         const formattedFecha = formatExcelDate(rawDateVal);
         const fecha = formattedFecha || lastSeenFecha;
@@ -489,15 +519,18 @@ function parseSupervisorRows(rawRows, sheetUrl) {
         const nombre = rawNombre || '—';
         const fuente = (rawFuente && rawFuente !== '—' && rawFuente !== '-') ? rawFuente : '—';
         const respuesta = rawRespuesta || 'Sin Respuesta';
-        const intentosNum = Number(getVal(r, ['número de intentos', 'numero de intentos', 'intentos', 'nro intentos']) || 1);
+        const intentosNum = Number(getVal(r, ['número de intentos', 'numero de intentos', 'intentos', 'nro intentos']) || (r['__col_4'] || r['E'] || 1));
         const intentos = isNaN(intentosNum) || intentosNum < 1 ? 1 : intentosNum;
         const mensajes1a1 = (rawMensajes.toUpperCase().includes('SI') || rawMensajes.toUpperCase().includes('SÍ') || rawMensajes === '1') ? 'Sí' : 'No';
         const comunidadSkool = (rawSkool.toUpperCase().includes('SI') || rawSkool.toUpperCase().includes('SÍ') || rawSkool === '1') ? 'Sí' : 'No';
         const contexto = rawContexto || 'Sin notas adicionales';
         const fechaRecontactar = formatExcelDate(getVal(r, ['fecha & hora| re-contactar', 'fecha & hora | re-contactar', 'fecha recontactar', 'recontactar', 're-contactar']));
 
+        const safeNombre = nombre.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 15);
+        const safeFecha = fecha.replace(/[^a-zA-Z0-9]/g, '_');
+
         callerRecords.push({
-          id: `CALLER-${callerRecords.length + 1}`,
+          id: `CALLER-${callerRecords.length + 1}-${safeNombre}-${safeFecha}`,
           fecha,
           nombre,
           fuente,
@@ -791,7 +824,7 @@ export function mapRowsToProspectingRecordsWithDedup(rawRows) {
     seenSignatures.add(signature);
 
     validRecords.push({
-      id: `GS-${Date.now()}-${validRecords.length + 1}`,
+      id: `GS-${index + 1}-${String(sdr || 'sdr').trim().replace(/\s+/g, '_')}-${String(timestamp || '').replace(/[^a-zA-Z0-9]/g, '')}`,
 
       timestamp,
       sdr,
