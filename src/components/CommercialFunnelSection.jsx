@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { useAnimatedNumber } from '../utils/useAnimatedNumber';
 import { matchesDateRange, getWeeksFromReports, matchesWeek } from '../utils/security';
-import EquivalenteInversionCard from './EquivalenteInversionCard';
 
 function AnimatedBar({ width, background, height = 7, borderRadius = 9999, style = {} }) {
   const [w, setW] = useState(0);
@@ -662,14 +661,6 @@ export default function CommercialFunnelSection({ reports = [], closerData = nul
 
         </div>
       </div>
-
-      {/* ─── EQUIVALENTE EN INVERSIÓN PUBLICITARIA (CPL $3.50 · CPA $30 · CAC $80) ─── */}
-      <EquivalenteInversionCard
-        diagnosticos={totalDiagnosticos}
-        agendados={totalAgendamientos}
-        cierres={totalCierres}
-        style={{ marginBottom: '18px' }}
-      />
 
       {/* ─── 2. BLOQUE DE CANALES: WAALAXY VS MANUAL CON CANTIDAD DE MENSAJES & SECUENCIA M1/M2/M3 ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '18px' }}>
