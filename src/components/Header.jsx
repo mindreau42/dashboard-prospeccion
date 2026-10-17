@@ -4,7 +4,7 @@ import {
   FileSpreadsheet, Link2, Trash2,
   Sparkles, TrendingUp, Trophy, CalendarCheck, Database, Layers,
   Crown, Users, LogOut, UploadCloud, PhoneCall, Target, UserCheck, ChevronDown,
-  RefreshCw, Filter, Zap, Share2, Briefcase
+  RefreshCw, Filter, Zap, Briefcase
 } from 'lucide-react';
 
 export default function Header({
@@ -19,7 +19,6 @@ export default function Header({
   onOpenGoogleSheetsModal,
   onClearData,
   onOpenProfileModal,
-  onOpenShareModal,
   onQuickSync,
   isQuickSyncing,
   quickSyncMsg,
@@ -31,15 +30,6 @@ export default function Header({
   const fullName = userSession?.fullName || userSession?.username || 'Usuario';
   const avatar = userSession?.avatar || '👤';
   const isImageAvatar = avatar && avatar.startsWith('data:image');
-
-  // Se muestra EXCLUSIVAMENTE cuando se ejecuta el servidor local de la PC / instalador (puerto 5185 o localhost)
-  // En servidores de nube remotos (ej. Render, VPS, Vercel), la URL ya es pública y no se debe mostrar el túnel local.
-  const isInstallerVersion = typeof window !== 'undefined' && (
-    window.location.port === '5185' ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('trycloudflare.com')
-  );
 
   return (
     <div style={{ marginBottom: '20px' }}>
@@ -66,7 +56,7 @@ export default function Header({
                 fontSize: '11px',
                 letterSpacing: '0.02em'
               }}>
-                v3.2.4
+                v3.5.0
               </span>
             </div>
             <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
@@ -198,30 +188,6 @@ export default function Header({
               </div>
             </button>
 
-            {/* BOTÓN COMPARTIR CONEXIÓN (EXCLUSIVO DE LA VERSIÓN INSTALADOR / LOCAL) */}
-            {isInstallerVersion && onOpenShareModal && (
-              <button
-                type="button"
-                onClick={onOpenShareModal}
-                className="btn-cyber-primary"
-                style={{
-                  padding: '6px 13px',
-                  fontSize: '12px',
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                  borderColor: '#0284c7',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: 800,
-                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Compartir enlace para usuarios de red local o vía internet"
-              >
-                <Share2 size={13} /> Compartir Conexión
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} />
-              </button>
-            )}
 
             {/* BOTÓN CERRAR SESIÓN (SIEMPRE VISIBLE Y POSICIÓN ESTÁNDAR) */}
             <button

@@ -16,7 +16,6 @@ import ExcelUploadModal from './components/ExcelUploadModal';
 import GoogleSheetsModal from './components/GoogleSheetsModal';
 import UserManagementModal from './components/UserManagementModal';
 import UserProfileModal from './components/UserProfileModal';
-import ShareConnectionModal from './components/ShareConnectionModal';
 import packageJson from '../package.json';
 
 const APP_VERSION = `v${packageJson.version}`;
@@ -203,7 +202,6 @@ export default function App() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // ── Centralized Modal Scroll Lock with Safe Restoration Guarantee ──
   useEffect(() => {
@@ -212,8 +210,7 @@ export default function App() {
       isGoogleSheetsModalOpen ||
       isUserManagementOpen ||
       isProfileModalOpen ||
-      isClearConfirmOpen ||
-      isShareModalOpen
+      isClearConfirmOpen
     );
 
     if (isAnyModalActive) {
@@ -466,18 +463,34 @@ export default function App() {
     // 1. Force full sync on mount (fetches Sheets + server state)
     performLiveSync(true);
 
-    // 2. Background check every 5 minutes — throttle guards prevent redundant calls
-    const interval = setInterval(() => performLiveSync(), SHEETS_INTERVAL_MS);
+    // 2. Control inteligente de actividad (Ahorro de horas en Render Free)
+    // Si la pestaña está oculta o el usuario inactivo por > 15 min, pausar pings para que Render entre en reposo
+    let lastUserActivity = Date.now();
+    const markActivity = () => { lastUserActivity = Date.now(); };
+    window.addEventListener('mousemove', markActivity, { passive: true });
+    window.addEventListener('keydown', markActivity, { passive: true });
+    window.addEventListener('click', markActivity, { passive: true });
 
-    // 3. On window focus: only poll server state (not Sheets) — much lighter call
-    const handleFocus = () => {
+    // Background sync cada 5 min SOLO si la pestaña está visible y el usuario activo
+    const interval = setInterval(() => {
+      if (document.hidden) return; // Pestaña minimizada u oculta: NO enviar pings para que Render duerma
+      const idleMinutes = (Date.now() - lastUserActivity) / 60000;
+      if (idleMinutes > 15) return; // Usuario inactivo > 15 min: permitir que Render entre en reposo (0 horas)
+      performLiveSync();
+    }, SHEETS_INTERVAL_MS);
+
+    // 3. Al volver a la pestaña (focus o visibilitychange): sincronizar datos si es necesario
+    const handleVisibilityOrFocus = () => {
+      if (document.hidden) return;
+      lastUserActivity = Date.now();
       const now = Date.now();
-      if (now - lastServerPollRef.current >= 60_000) { // at most once per minute on focus
-        lastServerPollRef.current = 0; // force server poll on next sync
+      if (now - lastServerPollRef.current >= 60_000) {
+        lastServerPollRef.current = 0;
         performLiveSync();
       }
     };
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     // 4. Cross-tab storage sync (localStorage events — zero API calls)
     const handleStorage = (e) => {
@@ -488,7 +501,11 @@ export default function App() {
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('mousemove', markActivity);
+      window.removeEventListener('keydown', markActivity);
+      window.removeEventListener('click', markActivity);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('storage', handleStorage);
     };
   }, [performLiveSync]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1063,7 +1080,6 @@ export default function App() {
         onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
         onClearData={() => setIsClearConfirmOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
-        onOpenShareModal={() => setIsShareModalOpen(true)}
         onQuickSync={handleQuickSync}
         isQuickSyncing={isQuickSyncing}
         quickSyncMsg={quickSyncMsg}
@@ -1218,12 +1234,6 @@ export default function App() {
         onClose={() => setIsProfileModalOpen(false)}
         userSession={currentSession}
         onUpdateAvatar={handleUpdateAvatar}
-      />
-
-      {/* Share Connection Modal (Cloudflare Tunnel & Local LAN) */}
-      <ShareConnectionModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
       />
 
       {/* Admin User Management Modal */}
