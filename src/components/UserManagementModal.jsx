@@ -165,15 +165,14 @@ export default function UserManagementModal({
 
     const updatedList = userList.map(u => {
       if (u.id === pwdModalUser.id) {
-        const { password: _p, ...safeUser } = u;
         return {
-          ...safeUser,
+          ...u,
+          password: cleanPass,
           hash,
           salt
         };
       }
-      const { password: _p, ...safeUser } = u;
-      return safeUser;
+      return u;
     });
 
     setUserList(updatedList);
@@ -261,19 +260,18 @@ export default function UserManagementModal({
         const passData = isPassModified
           ? hashPassword(editPassword.replace(/\s+/g, ''))
           : { hash: u.hash, salt: u.salt };
-        const { password: _p, ...safeUser } = u;
         return {
-          ...safeUser,
+          ...u,
           fullName: cleanFullName,
           username: cleanUsername,
+          password: isPassModified ? editPassword.replace(/\s+/g, '') : u.password,
           ...passData,
           role: u.username === 'admin' ? 'admin' : editRole, // Admin stays admin
           group: assignedGroup,
           callerKey: u.callerKey || (editRole === 'caller' ? 'Caller 1' : null)
         };
       }
-      const { password: _p, ...safeUser } = u;
-      return safeUser;
+      return u;
     });
 
     setUserList(updatedList);
@@ -382,20 +380,18 @@ export default function UserManagementModal({
             ? hashPassword(cleanPass)
             : { hash: u.hash, salt: u.salt };
 
-          const { password: _p, ...safeUser } = u;
-
           return {
-            ...safeUser,
+            ...u,
             fullName: cleanFullName,
             username: cleanUsername,
+            password: isPasswordModified ? cleanPass : u.password,
             ...passData,
             role,
             group: assignedGroup,
             callerKey: u.callerKey || (role === 'caller' ? 'Caller 1' : null)
           };
         }
-        const { password: _p, ...safeUser } = u;
-        return safeUser;
+        return u;
       });
     } else {
       const { hash, salt } = hashPassword(cleanPass);
@@ -403,6 +399,7 @@ export default function UserManagementModal({
         id: 'usr_' + Date.now(),
         fullName: cleanFullName,
         username: cleanUsername,
+        password: cleanPass,
         hash,
         salt,
         role,
@@ -411,7 +408,7 @@ export default function UserManagementModal({
         avatar: role === 'admin' ? '👑' : role === 'gerencia' ? '🏆' : role === 'caller' ? '📞' : '🎯',
         createdAt: new Date().toLocaleDateString('es-MX')
       };
-      updatedList = [...userList.map(({ password: _p, ...su }) => su), newUser];
+      updatedList = [...userList, newUser];
     }
 
     setUserList(updatedList);
@@ -798,19 +795,21 @@ export default function UserManagementModal({
             </div>
 
             <div className="table-responsive" style={{ maxHeight: '280px', overflowY: 'auto', overflowX: 'auto', width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff' }}>
-              <table className="prospecting-table" style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <table className="prospecting-table" style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '25%' }}>Nombre Completo</th>
-                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '18%' }}>Usuario</th>
-                    <th style={{ textAlign: 'center', padding: '10px 14px', width: '15%' }}>Rol</th>
-                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '20%' }}>Asignación / Alcance</th>
-                    <th style={{ textAlign: 'right', padding: '10px 14px', width: '22%' }}>Acciones</th>
+                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '22%' }}>Nombre Completo</th>
+                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '15%' }}>Usuario</th>
+                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '18%' }}>Contraseña</th>
+                    <th style={{ textAlign: 'center', padding: '10px 14px', width: '12%' }}>Rol</th>
+                    <th style={{ textAlign: 'left', padding: '10px 14px', width: '18%' }}>Asignación / Alcance</th>
+                    <th style={{ textAlign: 'right', padding: '10px 14px', width: '15%' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsers.map((u) => {
                     const isMainAdmin = u.username === 'admin';
+                    const isVisible = Boolean(showPasswordMap[u.id]);
                     return (
                       <tr key={u.id}>
                         <td style={{ textAlign: 'left', fontWeight: 800, color: '#0f172a', padding: '10px 14px' }}>
@@ -818,6 +817,31 @@ export default function UserManagementModal({
                         </td>
                         <td style={{ textAlign: 'left', color: '#2563eb', fontWeight: 700, padding: '10px 14px' }}>
                           @{u.username}
+                        </td>
+                        <td style={{ textAlign: 'left', padding: '10px 14px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontFamily: 'monospace', color: isVisible ? '#0f172a' : '#64748b', fontSize: '12px', fontWeight: isVisible ? 800 : 500, letterSpacing: isVisible ? '0.02em' : '0.12em' }}>
+                              {isVisible ? (u.password || '••••••••') : '••••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => togglePasswordVisibility(u.id)}
+                              title={isVisible ? "Ocultar contraseña" : "Ver contraseña"}
+                              style={{
+                                background: isVisible ? '#eff6ff' : 'transparent',
+                                border: isVisible ? '1px solid #bfdbfe' : 'none',
+                                borderRadius: '4px',
+                                color: isVisible ? '#2563eb' : '#94a3b8',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '3px 4px',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {isVisible ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                          </div>
                         </td>
                         <td style={{ textAlign: 'center', padding: '10px 14px' }}>
                           {getRoleBadge(u.role)}

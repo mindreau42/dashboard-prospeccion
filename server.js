@@ -260,13 +260,6 @@ function writeLocalDb(data) {
 async function getPersistedState() {
   const localDb = readLocalDb();
   if (localDb && (localDb.groupsData || localDb.users)) {
-    if (localDb.users && Array.isArray(localDb.users)) {
-      localDb.users = localDb.users.map(u => {
-        if (!u || typeof u !== 'object') return u;
-        const { password, ...safeUser } = u;
-        return safeUser;
-      });
-    }
     return localDb;
   }
   if (isSupabaseConfigured) {
@@ -279,11 +272,7 @@ async function getPersistedState() {
           groupsData: row.groups_data || DEFAULT_SERVER_STATE.groupsData,
           callersData: row.callers_data || DEFAULT_SERVER_STATE.callersData,
           adminReports: row.admin_reports || DEFAULT_SERVER_STATE.adminReports,
-          users: rawUsers ? rawUsers.map(u => {
-            if (!u || typeof u !== 'object') return u;
-            const { password, ...safeUser } = u;
-            return safeUser;
-          }) : undefined
+          users: rawUsers
         };
       }
     } catch (_) {}
@@ -294,11 +283,7 @@ async function getPersistedState() {
 async function savePersistedState(incoming) {
   const current = readLocalDb() || {};
   const rawUsers = incoming.users !== undefined ? incoming.users : current.users;
-  const cleanUsers = rawUsers ? rawUsers.map(u => {
-    if (!u || typeof u !== 'object') return u;
-    const { password, ...safeUser } = u;
-    return safeUser;
-  }) : undefined;
+  const cleanUsers = rawUsers;
 
   const merged = {
     ...current,

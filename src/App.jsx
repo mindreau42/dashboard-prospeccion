@@ -54,19 +54,19 @@ const SK = {
 };
 
 const DEFAULT_USERS = [
-  { id: 'usr_admin', fullName: 'Administrador', username: 'Admin', hash: '48b804297c627ef74b89950425177b5fad9318da02f693017fedc4b6cceede75', salt: '55p5lb08ckxmtf84be2', role: 'admin', group: null, callerKey: null, avatar: '👑', createdAt: '2026-08-18' },
-  { id: 'usr_s1', fullName: 'Canal A', username: 'SDR', hash: '9950d2b1c73f61be8ebdcb3d41c19eedf11a1397d766968cf3999e2d4a85c65a', salt: 'mmiznx8c8zmtf90yeg', role: 'setter', group: 'Setters Oficiales', callerKey: null, avatar: '🎯', createdAt: '2026-08-18' },
-  { id: 'usr_s2', fullName: 'Canal B', username: 'Aspirantes', hash: '9a0455ebb21b2fe5f356239d4d5c3394dc1138d474c8206454273ff3d2b27088', salt: 'tfnmswpwg4rmtk9m7vz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🚀', createdAt: '2026-08-18' },
-  { id: 'usr_c1', fullName: 'Canal C', username: 'Nury', hash: 'f7935e4cff692b2e4007677d0598a4540495d7b3ee309084802e001d1aa2b04e', salt: '0xfjvk395zmomthesx88', role: 'gerencia', group: null, callerKey: 'Caller 1', avatar: '📞', createdAt: '2026-08-18' },
-  { id: 'usr_c2', fullName: 'Principal', username: 'Director', hash: 'de6a42e8ae4e76f17a2f036f61056d755e4f91d4b0f53c9e700d754bb0d7f150', salt: '6ur7sa27wjwmthet4fo', role: 'gerencia', group: null, callerKey: 'Caller 2', avatar: '📞', createdAt: '2026-08-18' },
-  { id: 'usr_1788364178077', fullName: 'Luz Cardona', username: 'Luz', hash: '77e2d692b081d1f2162782d70029d0a7c1a71e5efb44c830e1eeb003ee67b94a', salt: 'jokjslm7eomtk9uv8c', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788364301519', fullName: 'Claudia Vázquez', username: 'Claudia', hash: '6e407286cd513bd581b39efa4d033c013d13f4033aa21add09fdd89275c4f6d6', salt: 'qh2pbqls0mlmtk9xihb', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788365685815', fullName: 'Monica Rodríguez', username: 'Monica', hash: '4ad7cba0a344df9fb45c4d2ef6bd8504500705224726d735176fc5e33a1706cf', salt: 'hj6z2ezgkovmtkar6lz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788365752926', fullName: 'Lisbeth Garrido', username: 'Lisbeth', hash: '670acc7980460702746769b14e480fd52d6c7881973597964958b1617d64bd73', salt: 'u9m3t4fhlimtkasme5', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788365838607', fullName: 'Silvia Corzo', username: 'Silvia', hash: '70865b6023e460476a7916cd7dacfe3387efa2bd7b465ae2037d986a91cf34e0', salt: '9g89dxi7cf4mtkaugi7', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788365918491', fullName: 'Ebelin Hernandez', username: 'Ebelin', hash: 'dd40141ca1c57edc2ed33db2b0c8f9f38c784d27fa3c5c4d005006cd00852b67', salt: '4nrtmyal7lumtkaw657', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1788365986021', fullName: 'Leydi Lopez', username: 'Leydi', hash: '0025f62fdb8bef9318f90b37c5e8fc8677c1e0fa94969eb0ea16a15a44b530aa', salt: 'scwlxtj95kmtkaxm91', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
-  { id: 'usr_1790266050584', fullName: 'Secundario', username: 'Team', hash: '8c7d1ac160e43901d43448c695d3b3f420e1ec762d263d009239525529204ddd', salt: 'kqkz94ok02kmufq6lg8', role: 'gerencia', group: null, callerKey: null, avatar: '🏆', createdAt: '24/9/2026' }
+  { id: 'usr_admin', fullName: 'Administrador', username: 'Admin', password: 'Neooma@2026', hash: '48b804297c627ef74b89950425177b5fad9318da02f693017fedc4b6cceede75', salt: '55p5lb08ckxmtf84be2', role: 'admin', group: null, callerKey: null, avatar: '👑', createdAt: '2026-08-18' },
+  { id: 'usr_s1', fullName: 'Canal A', username: 'SDR', password: 'Neooma#26', hash: '9950d2b1c73f61be8ebdcb3d41c19eedf11a1397d766968cf3999e2d4a85c65a', salt: 'mmiznx8c8zmtf90yeg', role: 'setter', group: 'Setters Oficiales', callerKey: null, avatar: '🎯', createdAt: '2026-08-18' },
+  { id: 'usr_s2', fullName: 'Canal B', username: 'Aspirantes', password: 'Setter@2026', hash: '9a0455ebb21b2fe5f356239d4d5c3394dc1138d474c8206454273ff3d2b27088', salt: 'tfnmswpwg4rmtk9m7vz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🚀', createdAt: '2026-08-18' },
+  { id: 'usr_c1', fullName: 'Canal C', username: 'Nury', password: 'Neooma_2', hash: 'f7935e4cff692b2e4007677d0598a4540495d7b3ee309084802e001d1aa2b04e', salt: '0xfjvk395zmomthesx88', role: 'gerencia', group: null, callerKey: 'Caller 1', avatar: '📞', createdAt: '2026-08-18' },
+  { id: 'usr_c2', fullName: 'Principal', username: 'Director', password: 'Neooma_1', hash: 'de6a42e8ae4e76f17a2f036f61056d755e4f91d4b0f53c9e700d754bb0d7f150', salt: '6ur7sa27wjwmthet4fo', role: 'gerencia', group: null, callerKey: 'Caller 2', avatar: '📞', createdAt: '2026-08-18' },
+  { id: 'usr_1788364178077', fullName: 'Luz Cardona', username: 'Luz', password: 'Setter#luz1', hash: '77e2d692b081d1f2162782d70029d0a7c1a71e5efb44c830e1eeb003ee67b94a', salt: 'jokjslm7eomtk9uv8c', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788364301519', fullName: 'Claudia Vázquez', username: 'Claudia', password: 'Setter#clau1', hash: '6e407286cd513bd581b39efa4d033c013d13f4033aa21add09fdd89275c4f6d6', salt: 'qh2pbqls0mlmtk9xihb', role: 'gerencia', group: null, callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365685815', fullName: 'Monica Rodríguez', username: 'Monica', password: 'Setter@monica1', hash: '4ad7cba0a344df9fb45c4d2ef6bd8504500705224726d735176fc5e33a1706cf', salt: 'hj6z2ezgkovmtkar6lz', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365752926', fullName: 'Lisbeth Garrido', username: 'Lisbeth', password: 'Setter@lisbeth1', hash: '670acc7980460702746769b14e480fd52d6c7881973597964958b1617d64bd73', salt: 'u9m3t4fhlimtkasme5', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365838607', fullName: 'Silvia Corzo', username: 'Silvia', password: 'Setter@silvia1', hash: '70865b6023e460476a7916cd7dacfe3387efa2bd7b465ae2037d986a91cf34e0', salt: '9g89dxi7cf4mtkaugi7', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365918491', fullName: 'Ebelin Hernandez', username: 'Ebelin', password: 'Setter@ebelin1', hash: 'dd40141ca1c57edc2ed33db2b0c8f9f38c784d27fa3c5c4d005006cd00852b67', salt: '4nrtmyal7lumtkaw657', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1788365986021', fullName: 'Leydi Lopez', username: 'Leydi', password: 'Setter@leydi1', hash: '0025f62fdb8bef9318f90b37c5e8fc8677c1e0fa94969eb0ea16a15a44b530aa', salt: 'scwlxtj95kmtkaxm91', role: 'setter', group: 'Setters Aspirantes', callerKey: null, avatar: '🎯', createdAt: '2/9/2026' },
+  { id: 'usr_1790266050584', fullName: 'Secundario', username: 'Team', password: 'Neooma_3', hash: '8c7d1ac160e43901d43448c695d3b3f420e1ec762d263d009239525529204ddd', salt: 'kqkz94ok02kmufq6lg8', role: 'gerencia', group: null, callerKey: null, avatar: '🏆', createdAt: '24/9/2026' }
 ];
 
 // ── Real Google Sheet URLs (pre-configured, loaded automatically on startup) ──
@@ -167,7 +167,13 @@ export default function App() {
   const [users, setUsers] = useState(() => {
     const loaded = load(SK.USERS, null);
     const source = (loaded && Array.isArray(loaded) && loaded.length > 0) ? loaded : DEFAULT_USERS;
-    return source.map(({ password, ...u }) => u);
+    return source.map(u => {
+      if (!u.password) {
+        const foundDef = DEFAULT_USERS.find(d => d.username?.toLowerCase() === u.username?.toLowerCase());
+        if (foundDef?.password) return { ...u, password: foundDef.password };
+      }
+      return u;
+    });
   });
   const [currentSession, setCurrentSession] = useState(() => loadSession());
   const [loginError, setLoginError] = useState('');
@@ -309,7 +315,13 @@ export default function App() {
         .then(serverState => {
           if (serverState && typeof serverState === 'object') {
             if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
-              setUsers(serverState.users.map(({ password, ...u }) => u));
+              setUsers(serverState.users.map(u => {
+                if (!u.password) {
+                  const foundDef = DEFAULT_USERS.find(d => d.username?.toLowerCase() === u.username?.toLowerCase());
+                  if (foundDef?.password) return { ...u, password: foundDef.password };
+                }
+                return u;
+              }));
             }
             if (serverState.groupsData) setGroupsData(serverState.groupsData);
             if (serverState.callersData) setCallersData(serverState.callersData);
