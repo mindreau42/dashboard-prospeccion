@@ -325,11 +325,13 @@ export default function ExecutiveOverviewSummary({ reports = [], callersData = {
     if (!sdrStats[s]) sdrStats[s] = { name: s, agendamientos: 0, score: 0, diag: 0, asist: 0, env: 0, acep: 0 };
     
     const diag = Number(r.diagnosticos || 0);
-    const agend = Number(r.agendamientos || (r.cumplioMeta === 'Sí' ? 1 : 0));
-    const asist = Number(r.asistidos !== undefined ? r.asistidos : (r.asistioLead === 'Sí' ? 1 : 0));
-    const cumplio = Boolean(r.cumplioMeta && String(r.cumplioMeta).toLowerCase().includes('si'));
-    // Opción A: +1 pt diag, +5 pts por reporte diario enviado, +10 pts asistido
-    const calcScore = (diag * 1) + 5 + (asist * 10);
+    const agend = Number(r.agendamientos || 0);
+    const asistRaw = (r.asistioLead || '').toLowerCase().trim();
+    const isAsistSi = (asistRaw === 'sí' || asistRaw === 'si' || asistRaw.startsWith('si') || asistRaw.startsWith('sí') || asistRaw === '1' || asistRaw === 'true') && !asistRaw.startsWith('no') && !asistRaw.includes('pendiente');
+    const asist = Number(r.asistidos !== undefined && r.asistidos !== '' ? r.asistidos : (isAsistSi ? 1 : 0));
+    
+    // Regla de cálculo oficial unificada con Leaderboard: (Diagnósticos × 1) + (Agendamientos × 5) + (Asistidos al Booking × 10)
+    const calcScore = (diag * 1) + (agend * 5) + (asist * 10);
 
     sdrStats[s].diag += diag;
     sdrStats[s].agendamientos += agend;

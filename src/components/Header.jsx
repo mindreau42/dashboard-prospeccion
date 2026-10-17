@@ -4,7 +4,7 @@ import {
   FileSpreadsheet, Link2, Trash2,
   Sparkles, TrendingUp, Trophy, CalendarCheck, Database, Layers,
   Crown, Users, LogOut, UploadCloud, PhoneCall, Target, UserCheck, ChevronDown,
-  RefreshCw, Filter, Zap, Share2
+  RefreshCw, Filter, Zap, Share2, Briefcase
 } from 'lucide-react';
 
 export default function Header({
@@ -32,15 +32,13 @@ export default function Header({
   const avatar = userSession?.avatar || '👤';
   const isImageAvatar = avatar && avatar.startsWith('data:image');
 
-  // Se muestra en la versión del instalador y siempre disponible para administradores
+  // Se muestra EXCLUSIVAMENTE cuando se ejecuta el servidor local de la PC / instalador (puerto 5185 o localhost)
+  // En servidores de nube remotos (ej. Render, VPS, Vercel), la URL ya es pública y no se debe mostrar el túnel local.
   const isInstallerVersion = typeof window !== 'undefined' && (
+    window.location.port === '5185' ||
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('trycloudflare.com') ||
-    window.location.hostname.includes('ngrok') ||
-    window.location.port === '5185' ||
-    role === 'admin' ||
-    role === 'gerencia'
+    window.location.hostname.includes('trycloudflare.com')
   );
 
   return (
@@ -54,9 +52,23 @@ export default function Header({
           
           {/* Marca, Subtítulo y Logo NEOOMA debajo */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
-              Dashboard de Prospección
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 style={{ margin: 0, lineHeight: 1.2, fontSize: '21px', fontWeight: 900, color: '#0f172a' }}>
+                Dashboard de Prospección
+              </h1>
+              <span style={{
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                fontWeight: 800,
+                color: '#475569',
+                fontSize: '11px',
+                letterSpacing: '0.02em'
+              }}>
+                v3.2.4
+              </span>
+            </div>
             <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>
               Reporte de Actividad: Métricas y KPIs
             </p>
@@ -97,10 +109,14 @@ export default function Header({
                     setAdminChannelFilter(val);
                     if (val === 'Callers') {
                       setActiveView('supervisor');
+                    } else if (val === 'Organico') {
+                      setActiveView('organico');
+                    } else if (val === 'Closer') {
+                      setActiveView('closer');
                     } else if (val === 'ALL') {
                       setActiveView('overview');
                     } else {
-                      if (activeView === 'overview' || activeView === 'supervisor') {
+                      if (activeView === 'overview' || activeView === 'supervisor' || activeView === 'organico' || activeView === 'closer') {
                         setActiveView('funnel');
                       }
                     }
@@ -122,6 +138,8 @@ export default function Header({
                   <option value="Setters Oficiales">Canal A - Setters Oficiales</option>
                   <option value="Setters Aspirantes">Canal B - Setters Aspirantes</option>
                   <option value="Callers">Canal C - Call Team</option>
+                  <option value="Organico">Canal D - Orgánico</option>
+                  <option value="Closer">Canal E - Closer</option>
                 </select>
               </div>
             )}
@@ -356,40 +374,53 @@ export default function Header({
               style={activeView === 'funnel'
                 ? { background: 'linear-gradient(135deg, #d97706 0%, #ea580c 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(217,119,6,0.4)' }
                 : { background: 'linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)', color: '#b45309', borderColor: '#fde68a' }}>
-              <TrendingUp size={14} /> 1. Embudo Comercial
+              1. Embudo Comercial
             </button>
 
             <button className="view-tab-btn-cyber" onClick={() => setActiveView('operative')}
               style={activeView === 'operative'
                 ? { background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(124,58,237,0.4)' }
                 : { background: 'linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)', color: '#6d28d9', borderColor: '#ddd6fe' }}>
-              <Layers size={14} /> 2. Análisis Operativo
+              2. Análisis Operativo
             </button>
 
             <button className="view-tab-btn-cyber" onClick={() => setActiveView('tracker')}
               style={activeView === 'tracker'
                 ? { background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(217,119,6,0.4)' }
                 : { background: 'linear-gradient(135deg, #fffbeb 0%, #fef9c3 100%)', color: '#92400e', borderColor: '#fcd34d' }}>
-              <Trophy size={14} /> 3. Tracker Leaderboard
+              3. Tracker Leaderboard
             </button>
 
             <button className="view-tab-btn-cyber" onClick={() => setActiveView('scheduled')}
               style={activeView === 'scheduled'
                 ? { background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(5,150,105,0.4)' }
                 : { background: 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)', color: '#047857', borderColor: '#99f6e4' }}>
-              <CalendarCheck size={14} /> 4. Lista de Agendados
+              4. Lista de Agendados
             </button>
 
             <button className="view-tab-btn-cyber" onClick={() => setActiveView('datasource')}
               style={activeView === 'datasource'
                 ? { background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(2,132,199,0.4)' }
                 : { background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', color: '#0369a1', borderColor: '#7dd3fc' }}>
-              <Database size={14} /> 5. Fuente de Datos
+              5. Fuente de Datos
             </button>
           </>
         )}
 
-        {/* 6. CALLER SCORECARD — Callers, Admin y Gerencia (global o canal callers) */}
+        {/* 6. ORGÁNICO SCORECARD — Admin, Gerencia (global o canal orgánico) */}
+        {((role === 'admin' || role === 'gerencia') && (adminChannelFilter === 'ALL' || adminChannelFilter === 'Organico')) && (
+          <button
+            className="view-tab-btn-cyber"
+            onClick={() => setActiveView('organico')}
+            style={activeView === 'organico'
+              ? { background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)', color: '#ffffff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(5,150,105,0.4)' }
+              : { background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%)', color: '#047857', borderColor: '#a7f3d0' }}
+          >
+            6. Orgánico Scorecard
+          </button>
+        )}
+
+        {/* 7. CALLER SCORECARD — Callers, Admin y Gerencia (global o canal callers) */}
         {(role === 'caller' || ((role === 'admin' || role === 'gerencia') && (adminChannelFilter === 'ALL' || adminChannelFilter === 'Callers'))) && (
           <button
             className="view-tab-btn-cyber"
@@ -398,7 +429,20 @@ export default function Header({
               ? { background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)', color: '#ffffff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(124,58,237,0.4)' }
               : { background: 'linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 100%)', color: '#7c3aed', borderColor: '#ddd6fe' }}
           >
-            <PhoneCall size={14} /> 6. Caller Scorecard
+            7. Caller Scorecard
+          </button>
+        )}
+
+        {/* 8. CLOSER SCORECARD — Admin, Gerencia (global o canal closer) */}
+        {((role === 'admin' || role === 'gerencia') && (adminChannelFilter === 'ALL' || adminChannelFilter === 'Closer')) && (
+          <button
+            className="view-tab-btn-cyber"
+            onClick={() => setActiveView('closer')}
+            style={activeView === 'closer'
+              ? { background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#ffffff', borderColor: 'transparent', boxShadow: '0 3px 10px rgba(79,70,229,0.4)' }
+              : { background: 'linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)', color: '#4338ca', borderColor: '#c7d2fe' }}
+          >
+            8. Closer Scorecard
           </button>
         )}
       </div>

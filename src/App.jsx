@@ -8,6 +8,8 @@ import SdrTrackerLeaderboard from './components/SdrTrackerLeaderboard';
 import DataSourceSection from './components/DataSourceSection';
 import ScheduledLeadsSection from './components/ScheduledLeadsSection';
 import SupervisorCallerSection from './components/SupervisorCallerSection';
+import OrganicoScorecardSection from './components/OrganicoScorecardSection';
+import CloserScorecardSection from './components/CloserScorecardSection';
 import UserPortalSection from './components/UserPortalSection';
 import ProspectingTable from './components/ProspectingTable';
 import ExcelUploadModal from './components/ExcelUploadModal';
@@ -22,6 +24,7 @@ const APP_VERSION = `v${packageJson.version}`;
 import { INITIAL_MOCK_REPORTS } from './data/mockData';
 import { INITIAL_SUPERVISOR_CALLER, INITIAL_SUPERVISOR_SCORECARD } from './data/mockSupervisorData';
 import { fetchGoogleSheetData, fetchSupervisorSheetData } from './utils/googleSheetsParser';
+import { fetchOrganicoSheetData, fetchCloserSheetData } from './utils/specializedSheetsParser';
 import {
   hashPassword,
   verifyPassword,
@@ -40,13 +43,15 @@ import {
 
 // ── Storage Keys (v22: Zero residual cache, clean sync architecture) ──
 const SK = {
-  SESSION:      'prd_session_v22',
-  USERS:        'prd_users_v22',
-  GROUPS:       'prd_groups_data_v22',
-  ADMIN_REPS:   'prd_admin_reports_v22',
-  ADMIN_SRC:    'prd_admin_source_v22',
-  ADMIN_URL:    'prd_admin_sheet_url_v22',
-  CALLERS_DATA: 'prd_callers_data_v22',
+  SESSION:       'prd_session_v22',
+  USERS:         'prd_users_v22',
+  GROUPS:        'prd_groups_data_v22',
+  ADMIN_REPS:    'prd_admin_reports_v22',
+  ADMIN_SRC:     'prd_admin_source_v22',
+  ADMIN_URL:     'prd_admin_sheet_url_v22',
+  CALLERS_DATA:  'prd_callers_data_v22',
+  ORGANICO_DATA: 'prd_organico_data_v22',
+  CLOSER_DATA:   'prd_closer_data_v22',
 };
 
 const DEFAULT_USERS = [
@@ -69,6 +74,8 @@ const DEFAULT_USERS = [
 const SHEET_URL_SETTERS_OFICIALES  = 'https://docs.google.com/spreadsheets/d/1uPX_UFqe1giECEIOANQ8ihVAxybP-HHTsNKZy2gpqhM/edit?usp=sharing';
 const SHEET_URL_SETTERS_ASPIRANTES = 'https://docs.google.com/spreadsheets/d/1Z2CXH0YmaPcTVjQlCCnduRKdM91lrTiAcvqo2nH-E1k/edit?usp=sharing';
 const SHEET_URL_CALLERS            = 'https://docs.google.com/spreadsheets/d/1XVwdte_5CKGHSxmeEQo5AT812REs_1YF/edit?usp=sharing&ouid=109702363461847797717&rtpof=true&sd=true';
+const SHEET_URL_ORGANICO           = 'https://docs.google.com/spreadsheets/d/1N092h1lIRYKeOtlVkB42_JYR3HR1Nker/edit?gid=1087525007#gid=1087525007';
+const SHEET_URL_CLOSER             = 'https://docs.google.com/spreadsheets/d/1U5CyKhgMjvw6djjMiIGiidno41dJC-iM/edit?gid=1981983632#gid=1981983632';
 
 const DEFAULT_GROUPS_DATA = {
   'Setters Aspirantes': {
@@ -101,6 +108,20 @@ const DEFAULT_CALLERS_DATA = {
     scorecardReports: [],
     lastSync: ''
   }
+};
+
+const DEFAULT_ORGANICO_DATA = {
+  records: [],
+  scorecardReports: [],
+  url: SHEET_URL_ORGANICO,
+  lastSync: ''
+};
+
+const DEFAULT_CLOSER_DATA = {
+  reports: [],
+  summary: null,
+  url: SHEET_URL_CLOSER,
+  lastSync: ''
 };
 
 
@@ -165,6 +186,10 @@ export default function App() {
   const [callersData, setCallersData] = useState(() => load(SK.CALLERS_DATA, DEFAULT_CALLERS_DATA));
   const [selectedCallerKey, setSelectedCallerKey] = useState('Todos');
 
+  // ── Orgánico & Closer Data Stores (Persistent in LocalStorage + Live State) ──
+  const [organicoData, setOrganicoData] = useState(() => load(SK.ORGANICO_DATA, DEFAULT_ORGANICO_DATA));
+  const [closerData, setCloserData]     = useState(() => load(SK.CLOSER_DATA, DEFAULT_CLOSER_DATA));
+
   // ── Active Navigation View ──
   const [activeView, setActiveView] = useState(() => {
     if (currentSession?.role === 'caller') return 'supervisor';
@@ -218,6 +243,8 @@ export default function App() {
   useEffect(() => { save(SK.SESSION, currentSession); }, [currentSession]);
   useEffect(() => { save(SK.GROUPS, groupsData); }, [groupsData]);
   useEffect(() => { save(SK.CALLERS_DATA, callersData); }, [callersData]);
+  useEffect(() => { save(SK.ORGANICO_DATA, organicoData); }, [organicoData]);
+  useEffect(() => { save(SK.CLOSER_DATA, closerData); }, [closerData]);
 
   useEffect(() => {
     // 1. Fetch persistent server state from central server on PC
@@ -230,18 +257,25 @@ export default function App() {
           }
           if (serverState.groupsData) setGroupsData(serverState.groupsData);
           if (serverState.callersData) setCallersData(serverState.callersData);
+          if (serverState.organicoData) setOrganicoData(serverState.organicoData);
+          if (serverState.closerData) setCloserData(serverState.closerData);
           if (serverState.adminReports) setAdminReports(serverState.adminReports);
 
           // Si el servidor local aún no tiene registros cargados o los callers tienen registros desactualizados sin nombres, sincronizamos
           const totalRecords = Object.values(serverState.groupsData || {}).reduce((acc, g) => acc + (g.records?.length || 0), 0);
           const totalCallerRecords = Object.values(serverState.callersData || {}).reduce((acc, c) => acc + (c.callerRecords?.length || 0), 0);
+          const totalOrganicoRecords = (serverState.organicoData?.records?.length || 0);
+          const totalCloserRecords = (serverState.closerData?.reports?.length || 0);
           const callersNeedRefresh = Object.values(serverState.callersData || {}).some(c => {
             const recs = c.callerRecords || [];
-            return recs.length > 0 && recs.slice(0, 10).every(r => !r.nombre || r.nombre === '—');
+            return recs.length > 0 && (
+              recs.slice(-30).some(r => !r.nombre || r.nombre === '—') ||
+              recs.filter(r => !r.nombre || r.nombre === '—').length > 5
+            );
           });
 
-          if (totalRecords === 0 || totalCallerRecords === 0 || callersNeedRefresh) {
-            performLiveSync(true, serverState.groupsData, serverState.callersData);
+          if (totalRecords === 0 || totalCallerRecords === 0 || totalOrganicoRecords === 0 || totalCloserRecords === 0 || callersNeedRefresh) {
+            performLiveSync(true, serverState.groupsData, serverState.callersData, serverState.organicoData, serverState.closerData);
           }
         }
       })
@@ -255,6 +289,12 @@ export default function App() {
   const callersDataRef = useRef(callersData);
   useEffect(() => { callersDataRef.current = callersData; }, [callersData]);
 
+  const organicoDataRef = useRef(organicoData);
+  useEffect(() => { organicoDataRef.current = organicoData; }, [organicoData]);
+
+  const closerDataRef = useRef(closerData);
+  useEffect(() => { closerDataRef.current = closerData; }, [closerData]);
+
   // ── Smart Sync — tracks last fetch time to avoid redundant Sheets calls ──
   const lastSheetsFetchRef = useRef(0);       // timestamp of last Google Sheets fetch
   const lastServerPollRef  = useRef(0);       // timestamp of last /api/state GET
@@ -262,7 +302,7 @@ export default function App() {
   const SERVER_POLL_MS     = 60 * 1000;      // poll local /api/state every minute
 
   // ── Global Live Multi-User Auto-Sync (Centralized Server as Single Source of Truth) ──
-  const performLiveSync = useCallback(async (forceSheets = false, customGroups = null, customCallers = null) => {
+  const performLiveSync = useCallback(async (forceSheets = false, customGroups = null, customCallers = null, customOrganico = null, customCloser = null) => {
     const now = Date.now();
 
     try {
@@ -276,6 +316,8 @@ export default function App() {
             }
             if (serverState.groupsData) setGroupsData(serverState.groupsData);
             if (serverState.callersData) setCallersData(serverState.callersData);
+            if (serverState.organicoData) setOrganicoData(serverState.organicoData);
+            if (serverState.closerData) setCloserData(serverState.closerData);
             if (serverState.adminReports) setAdminReports(serverState.adminReports);
           }
         })
@@ -285,8 +327,10 @@ export default function App() {
       if (!forceSheets) return;
       lastSheetsFetchRef.current = now;
 
-      const currentGroups  = customGroups  || groupsDataRef.current;
-      const currentCallers = customCallers || callersDataRef.current;
+      const currentGroups   = customGroups   || groupsDataRef.current;
+      const currentCallers  = customCallers  || callersDataRef.current;
+      const currentOrganico = customOrganico || organicoDataRef.current;
+      const currentCloser   = customCloser   || closerDataRef.current;
 
       // 1. Sync Setters Oficiales ONLY if currently linked
       const oficialesUrl    = (currentGroups?.['Setters Oficiales']?.url || '').trim();
@@ -309,7 +353,6 @@ export default function App() {
                     lastSync: syncTime
                   }
                 };
-                // Persist once after Sheets fetch — not on every poll cycle
                 saveStateToServer({ groupsData: next });
                 return next;
               });
@@ -376,6 +419,46 @@ export default function App() {
             .catch(() => {});
         }
       });
+
+      // 4. Sync Orgánico ONLY if currently linked
+      const orgUrl = (currentOrganico?.url || '').trim();
+      if (orgUrl) {
+        fetchOrganicoSheetData(orgUrl)
+          .then(res => {
+            if (res && Array.isArray(res.records) && res.records.length > 0) {
+              const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+              const next = {
+                records: res.records,
+                scorecardReports: res.scorecardReports || [],
+                url: orgUrl,
+                lastSync: syncTime
+              };
+              setOrganicoData(next);
+              saveStateToServer({ organicoData: next });
+            }
+          })
+          .catch(() => {});
+      }
+
+      // 5. Sync Closer ONLY if currently linked
+      const clsUrl = (currentCloser?.url || '').trim();
+      if (clsUrl) {
+        fetchCloserSheetData(clsUrl)
+          .then(res => {
+            if (res && Array.isArray(res.reports) && res.reports.length > 0) {
+              const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+              const next = {
+                reports: res.reports,
+                summary: res.summary || null,
+                url: clsUrl,
+                lastSync: syncTime
+              };
+              setCloserData(next);
+              saveStateToServer({ closerData: next });
+            }
+          })
+          .catch(() => {});
+      }
     } catch (_) {}
   }, [saveStateToServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -682,6 +765,38 @@ export default function App() {
     });
   };
 
+  // ── Update Orgánico Data Store ──
+  const handleUpdateOrganicoData = (records, scorecardReports, url) => {
+    const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    setOrganicoData(prev => {
+      const updated = {
+        ...prev,
+        records: records !== undefined ? records : (prev?.records || []),
+        scorecardReports: scorecardReports !== undefined ? scorecardReports : (prev?.scorecardReports || []),
+        url: url !== undefined ? url : (prev?.url || ''),
+        lastSync: syncTime
+      };
+      saveStateToServer({ organicoData: updated });
+      return updated;
+    });
+  };
+
+  // ── Update Closer Data Store ──
+  const handleUpdateCloserData = (reports, summary, url) => {
+    const syncTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    setCloserData(prev => {
+      const updated = {
+        ...prev,
+        reports: reports !== undefined ? reports : (prev?.reports || []),
+        summary: summary !== undefined ? summary : (prev?.summary || null),
+        url: url !== undefined ? url : (prev?.url || ''),
+        lastSync: syncTime
+      };
+      saveStateToServer({ closerData: updated });
+      return updated;
+    });
+  };
+
   const handleClearChannelData = (targetChannel = adminChannelFilter) => {
     if (targetChannel === 'Setters Oficiales' || targetChannel === 'Setters Aspirantes') {
       setGroupsData(prev => {
@@ -711,6 +826,14 @@ export default function App() {
         saveStateToServer({ callersData: updated });
         return updated;
       });
+    } else if (targetChannel === 'Organico') {
+      const cleared = { records: [], scorecardReports: [], url: organicoData?.url || '', lastSync: '' };
+      setOrganicoData(cleared);
+      saveStateToServer({ organicoData: cleared });
+    } else if (targetChannel === 'Closer') {
+      const cleared = { reports: [], summary: null, url: closerData?.url || '', lastSync: '' };
+      setCloserData(cleared);
+      saveStateToServer({ closerData: cleared });
     } else {
       // Clear ALL
       setAdminReports([]);
@@ -736,7 +859,20 @@ export default function App() {
         };
       });
       setCallersData(clearedCallers);
-      saveStateToServer({ groupsData: clearedGroups, callersData: clearedCallers, adminReports: [] });
+
+      const clearedOrganico = { records: [], scorecardReports: [], url: organicoData?.url || '', lastSync: '' };
+      setOrganicoData(clearedOrganico);
+
+      const clearedCloser = { reports: [], summary: null, url: closerData?.url || '', lastSync: '' };
+      setCloserData(clearedCloser);
+
+      saveStateToServer({
+        groupsData: clearedGroups,
+        callersData: clearedCallers,
+        organicoData: clearedOrganico,
+        closerData: clearedCloser,
+        adminReports: []
+      });
     }
   };
 
@@ -747,6 +883,8 @@ export default function App() {
     setAdminReports([]);
     setGroupsData(DEFAULT_GROUPS_DATA);
     setCallersData(DEFAULT_CALLERS_DATA);
+    setOrganicoData(DEFAULT_ORGANICO_DATA);
+    setCloserData(DEFAULT_CLOSER_DATA);
     setAdminSourceInfo({ type: 'demo', name: 'Datos de Grupos' });
     setAdminSheetUrl('');
     setIsClearConfirmOpen(false);
@@ -833,14 +971,63 @@ export default function App() {
         );
       }
 
+      // 4. Sync Orgánico only if actively linked
+      let updatedOrganico = { ...organicoData };
+      const orgUrl = (organicoData?.url || '').trim();
+      if (orgUrl) {
+        syncPromises.push(
+          fetchOrganicoSheetData(orgUrl)
+            .then(res => {
+              if (res?.records) {
+                updatedOrganico = {
+                  records: res.records,
+                  scorecardReports: res.scorecardReports || [],
+                  url: orgUrl,
+                  lastSync: now
+                };
+                syncedChannels.push(`Orgánico (${res.records.length})`);
+              }
+            })
+            .catch(e => console.warn('Orgánico sync error:', e))
+        );
+      }
+
+      // 5. Sync Closer only if actively linked
+      let updatedCloser = { ...closerData };
+      const clsUrl = (closerData?.url || '').trim();
+      if (clsUrl) {
+        syncPromises.push(
+          fetchCloserSheetData(clsUrl)
+            .then(res => {
+              if (res?.reports) {
+                updatedCloser = {
+                  reports: res.reports,
+                  summary: res.summary || null,
+                  url: clsUrl,
+                  lastSync: now
+                };
+                syncedChannels.push(`Closer (${res.reports.length})`);
+              }
+            })
+            .catch(e => console.warn('Closer sync error:', e))
+        );
+      }
+
       if (syncPromises.length === 0) {
         setQuickSyncMsg('ℹ️ No hay enlaces activos de Google Sheets vinculados.');
       } else {
         await Promise.all(syncPromises);
         setGroupsData(updatedGroups);
         setCallersData(updatedCallers);
+        setOrganicoData(updatedOrganico);
+        setCloserData(updatedCloser);
         // Persist synced state to server with full records!
-        saveStateToServer({ groupsData: updatedGroups, callersData: updatedCallers });
+        saveStateToServer({
+          groupsData: updatedGroups,
+          callersData: updatedCallers,
+          organicoData: updatedOrganico,
+          closerData: updatedCloser
+        });
         // Reset auto-sync timers
         lastSheetsFetchRef.current = Date.now();
         lastServerPollRef.current  = Date.now();
@@ -914,6 +1101,13 @@ export default function App() {
             {activeView === 'overview' && (role === 'admin' || role === 'gerencia') && (
               <ExecutiveOverviewSummary reports={baseReports} callersData={callersData} groupsData={groupsData} />
             )}
+            {activeView === 'organico' && (role === 'admin' || role === 'gerencia') && (
+              <OrganicoScorecardSection
+                organicoData={organicoData}
+                onUpdateOrganicoData={handleUpdateOrganicoData}
+                userSession={currentSession}
+              />
+            )}
             {activeView === 'supervisor' && (role === 'admin' || role === 'gerencia') && (
               <SupervisorCallerSection
                 callersData={callersData}
@@ -923,7 +1117,15 @@ export default function App() {
                 userSession={currentSession}
               />
             )}
-            {activeView !== 'overview' && activeView !== 'supervisor' && (
+            {activeView === 'closer' && (role === 'admin' || role === 'gerencia') && (
+              <CloserScorecardSection
+                closerData={closerData}
+                onUpdateCloserData={handleUpdateCloserData}
+                userSession={currentSession}
+                funnelReports={baseReports}
+              />
+            )}
+            {activeView !== 'overview' && activeView !== 'supervisor' && activeView !== 'organico' && activeView !== 'closer' && (
               baseReports.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '60px 30px', textAlign: 'center', margin: '20px 0' }}>
                   <Database size={44} color="#2563eb" style={{ margin: '0 auto 14px', opacity: 0.8 }} />
@@ -943,7 +1145,7 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {activeView === 'funnel'      && <CommercialFunnelSection reports={baseReports} />}
+                  {activeView === 'funnel'      && <CommercialFunnelSection reports={baseReports} closerData={closerData} />}
                   {activeView === 'operative'   && <OperativeAnalysisSection reports={baseReports} />}
                   {activeView === 'tracker'     && <SdrTrackerLeaderboard reports={baseReports} />}
                   {activeView === 'scheduled'   && <ScheduledLeadsSection reports={baseReports} />}
@@ -1002,8 +1204,12 @@ export default function App() {
         userSession={currentSession}
         groupsData={groupsData}
         callersData={callersData}
+        organicoData={organicoData}
+        closerData={closerData}
         onUpdateGroupDataForKey={handleUpdateGroupDataForKey}
         onUpdateCallerData={handleUpdateCallerData}
+        onUpdateOrganicoData={handleUpdateOrganicoData}
+        onUpdateCloserData={handleUpdateCloserData}
       />
 
       {/* User Profile & Logo Customization Modal */}

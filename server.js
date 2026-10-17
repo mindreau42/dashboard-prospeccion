@@ -128,11 +128,15 @@ function getLocalNetworkIp() {
   return '127.0.0.1';
 }
 
-// ── TÚNEL CLOUDFLARE AUTOMÁTICO (ILIMITADO) ──
+// ── TÚNEL CLOUDFLARE AUTOMÁTICO (ILIMITADO CON AUTO-RECONEXIÓN) ──
 let cloudflareTunnelUrl = '';
 let cloudflareProcess = null;
+let isShuttingDown = false;
+let restartAttempts = 0;
 
 function startCloudflareTunnel() {
+  if (isShuttingDown) return;
+
   const cloudflareBin = [
     path.join(__dirname, 'cloudflared.exe'),
     path.join(__dirname, 'version_instalador', 'cloudflared.exe'),
@@ -145,7 +149,16 @@ function startCloudflareTunnel() {
   }
 
   try {
-    cloudflareProcess = spawn(cloudflareBin, ['tunnel', '--url', `http://127.0.0.1:${PORT}`, '--no-autoupdate'], {
+    // Protocolo http2 para máxima compatibilidad con routers/firewalls (evita bloqueos de puertos UDP de QUIC)
+    const tunnelArgs = [
+      'tunnel',
+      '--url', `http://127.0.0.1:${PORT}`,
+      '--protocol', 'http2',
+      '--http-host-header', 'localhost',
+      '--no-autoupdate'
+    ];
+
+    cloudflareProcess = spawn(cloudflareBin, tunnelArgs, {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -157,6 +170,7 @@ function startCloudflareTunnel() {
       const match = str.match(urlRegex);
       if (match && !cloudflareTunnelUrl) {
         cloudflareTunnelUrl = match[0];
+        restartAttempts = 0;
         console.log(`\n========================================================================`);
         console.log(`🌐 ENLACE PÚBLICO REMOTO ACTIVO (CLOUDFLARE - ILIMITADO):`);
         console.log(`   ${cloudflareTunnelUrl}`);
@@ -167,17 +181,31 @@ function startCloudflareTunnel() {
     cloudflareProcess.stdout.on('data', handleOutput);
     cloudflareProcess.stderr.on('data', handleOutput);
 
-    cloudflareProcess.on('exit', () => {
+    cloudflareProcess.on('exit', (code) => {
       cloudflareTunnelUrl = '';
+      if (!isShuttingDown) {
+        restartAttempts++;
+        const delay = Math.min(3000 * restartAttempts, 15000);
+        console.log(`⚠️ [Túnel] Proceso cloudflared finalizó (código ${code}). Reconectando en ${delay / 1000}s...`);
+        setTimeout(startCloudflareTunnel, delay);
+      }
+    });
+
+    cloudflareProcess.on('error', (err) => {
+      console.warn('⚠️ [Túnel] Error en proceso cloudflared:', err.message);
     });
   } catch (err) {
     console.warn('⚠️ [Túnel] Error al iniciar:', err.message);
+    if (!isShuttingDown) {
+      setTimeout(startCloudflareTunnel, 5000);
+    }
   }
 }
 
 setTimeout(startCloudflareTunnel, 1200);
 
 function cleanup() {
+  isShuttingDown = true;
   if (cloudflareProcess) {
     try { cloudflareProcess.kill(); } catch (_) {}
   }
@@ -185,6 +213,8 @@ function cleanup() {
 process.on('exit', cleanup);
 process.on('SIGINT', () => { cleanup(); process.exit(); });
 process.on('SIGTERM', () => { cleanup(); process.exit(); });
+process.on('uncaughtException', (err) => { console.error('⚠️ [UncaughtException]', err); });
+process.on('unhandledRejection', (reason) => { console.error('⚠️ [UnhandledRejection]', reason); });
 
 // ── PERSISTENCIA (SUPABASE + LOCAL) ──
 async function supabaseFetch(endpoint, options = {}) {

@@ -411,24 +411,28 @@ export default function ShareConnectionModal({ isOpen, onClose }) {
             </button>
           </div>
 
-          {/* Banner de Seguridad & Estado */}
+          {/* Guía Rápida de Conexión */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 14px',
+            padding: '12px 14px',
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
             borderRadius: '8px',
-            fontSize: '11px',
-            color: '#64748b'
+            fontSize: '11.5px',
+            color: '#475569',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px'
           }}>
-            <ShieldCheck size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
-            <span>
-              <strong>Seguridad Blindada:</strong> Conexión cifrada TLS, firewall de solicitudes y rate-limiting anti fuerza bruta.
-            </span>
+            <div style={{ fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={14} color="#0284c7" /> ¿Cuál enlace compartir?
+            </div>
+            <div>
+              • <strong>En la misma oficina o casa (Mismo Wi-Fi):</strong> Comparte el <strong>Enlace 2 (Red Local)</strong>. Es 100% directo y no depende de internet.
+            </div>
+            <div>
+              • <strong>Fuera de la oficina o en datos móviles:</strong> Comparte el <strong>Enlace 1 (Remoto Cloudflare)</strong>. Asegúrate de mantener esta ventana del Dashboard abierta en tu PC para permitir la conexión.
+            </div>
           </div>
-
         </div>
 
         {/* Pie de modal */}

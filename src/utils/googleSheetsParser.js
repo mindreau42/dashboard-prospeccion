@@ -142,10 +142,6 @@ export function fetchViaJsonp(spreadsheetId, gid, sheetName) {
               rowObj[colName] = val;
             }
             rowObj[`__col_${i}`] = val;
-            const cid = data.table.cols && data.table.cols[i] && data.table.cols[i].id;
-            if (cid && !rowObj[cid]) {
-              rowObj[cid] = val;
-            }
           });
           return rowObj;
         });
@@ -474,43 +470,99 @@ function parseSupervisorRows(rawRows, sheetUrl) {
       let lastSeenFecha = '18-Ago-26';
 
       rawRows.forEach((r, idx) => {
-        let rawNombre = String(getVal(r, ['nombre', 'nombre completo', 'nombre y apellido', 'nombre del prospecto', 'prospecto', 'lead', 'contacto', 'cliente', 'persona', 'titular', 'alumno', 'name', 'full name']) || '').trim();
-
-        // Detección robusta cuando la columna B / índice 1 no tiene encabezado o está en blanco
-        if (!rawNombre) {
-          if (r['__col_1'] && String(r['__col_1']).trim()) {
-            rawNombre = String(r['__col_1']).trim();
-          } else if (r['B'] && String(r['B']).trim()) {
-            rawNombre = String(r['B']).trim();
-          } else {
+        // 1. Prospect Name: Column B / Index 1 is often blank-headered or named ' ' in Google Sheets
+        let rawNombre = '';
+        if (r['__col_1'] !== undefined && String(r['__col_1']).trim()) {
+          rawNombre = String(r['__col_1']).trim();
+        } else if (r[' '] !== undefined && String(r[' ']).trim()) {
+          rawNombre = String(r[' ']).trim();
+        } else if (r['B'] !== undefined && String(r['B']).trim()) {
+          rawNombre = String(r['B']).trim();
+        } else {
+          rawNombre = String(getVal(r, ['nombre', 'nombre completo', 'nombre y apellido', 'nombre del prospecto', 'prospecto', 'lead', 'contacto', 'cliente', 'persona', 'titular', 'alumno', 'name', 'full name']) || '').trim();
+          if (!rawNombre) {
             const keys = Object.keys(r);
             const blankKey = keys.find(k => k.trim() === '' || k.startsWith('__EMPTY'));
-            if (blankKey && r[blankKey] && String(r[blankKey]).trim()) {
+            if (blankKey && r[blankKey] !== undefined && String(r[blankKey]).trim()) {
               rawNombre = String(r[blankKey]).trim();
-            } else if (keys.length > 1 && r[keys[1]] && String(r[keys[1]]).trim()) {
+            } else if (keys.length > 1 && r[keys[1]] !== undefined && String(r[keys[1]]).trim()) {
               rawNombre = String(r[keys[1]]).trim();
             }
           }
         }
 
-        const rawFuente = String(getVal(r, ['fuente', 'origen', 'canal', 'source', 'lead source', 'fuente de origen', 'tipo de fuente']) || (r['__col_2'] || r['C'] || '')).trim();
-        const rawRespuesta = String(getVal(r, ['respuesta', 'estado', 'status', 'calificacion']) || (r['__col_3'] || r['D'] || '')).trim();
-        const rawContexto = String(getVal(r, ['contexto | opcional', 'contexto opcional', 'contexto', 'notas', 'observaciones', 'comentarios']) || (r['__col_7'] || r['H'] || '')).trim();
-        const rawMensajes = String(getVal(r, ['mensajes 1-1', 'mensajes 1:1', 'mensajes 1 a 1', 'mensajes', 'mensajes whatsapp']) || (r['__col_5'] || r['F'] || '')).trim();
-        const rawSkool = String(getVal(r, ['comunidad | skool', 'comunidad skool', 'comunidad |skool', 'comunidad|skool', 'skool', 'comunidad', 'comunidad | ghl', 'comunidad ghl', 'ghl']) || (r['__col_6'] || r['G'] || '')).trim();
+        // 2. Date: Column A / Index 0 / 'Diana Marisa Prado'
+        let rawDateVal = '';
+        if (r['__col_0'] !== undefined && String(r['__col_0']).trim()) {
+          rawDateVal = r['__col_0'];
+        } else if (r['Diana Marisa Prado'] !== undefined && String(r['Diana Marisa Prado']).trim()) {
+          rawDateVal = r['Diana Marisa Prado'];
+        } else if (r['A'] !== undefined && String(r['A']).trim()) {
+          rawDateVal = r['A'];
+        } else {
+          rawDateVal = getVal(r, ['fecha', 'marca temporal', 'date', 'registro', 'timestamp']);
+          if (!rawDateVal && Object.keys(r).length > 0) {
+            rawDateVal = r[Object.keys(r)[0]];
+          }
+        }
+
+        // 3. Fuente: Column C / Index 2 / 'Fuente'
+        let rawFuente = '';
+        if (r['Fuente'] !== undefined && String(r['Fuente']).trim()) {
+          rawFuente = String(r['Fuente']).trim();
+        } else if (r['__col_2'] !== undefined && String(r['__col_2']).trim()) {
+          rawFuente = String(r['__col_2']).trim();
+        } else {
+          rawFuente = String(getVal(r, ['fuente', 'origen', 'canal', 'source', 'lead source', 'fuente de origen', 'tipo de fuente']) || '').trim();
+        }
+
+        // 4. Respuesta / Estado: Column D / Index 3 / 'Respuesta'
+        let rawRespuesta = '';
+        if (r['Respuesta'] !== undefined && String(r['Respuesta']).trim()) {
+          rawRespuesta = String(r['Respuesta']).trim();
+        } else if (r['__col_3'] !== undefined && String(r['__col_3']).trim()) {
+          rawRespuesta = String(r['__col_3']).trim();
+        } else {
+          rawRespuesta = String(getVal(r, ['respuesta', 'estado', 'status', 'calificacion']) || '').trim();
+        }
+
+        // 5. Contexto / Notas: Column H / Index 7 / ' Contexto | Opcional'
+        let rawContexto = '';
+        if (r[' Contexto | Opcional'] !== undefined && String(r[' Contexto | Opcional']).trim()) {
+          rawContexto = String(r[' Contexto | Opcional']).trim();
+        } else if (r['Contexto | Opcional'] !== undefined && String(r['Contexto | Opcional']).trim()) {
+          rawContexto = String(r['Contexto | Opcional']).trim();
+        } else if (r['__col_7'] !== undefined && String(r['__col_7']).trim()) {
+          rawContexto = String(r['__col_7']).trim();
+        } else {
+          rawContexto = String(getVal(r, ['contexto | opcional', 'contexto opcional', 'contexto', 'notas', 'observaciones', 'comentarios']) || '').trim();
+        }
+
+        // 6. Mensajes 1-1: Column F / Index 5 / 'Mensajes 1-1'
+        let rawMensajes = '';
+        if (r['Mensajes 1-1'] !== undefined && String(r['Mensajes 1-1']).trim()) {
+          rawMensajes = String(r['Mensajes 1-1']).trim();
+        } else if (r['__col_5'] !== undefined && String(r['__col_5']).trim()) {
+          rawMensajes = String(r['__col_5']).trim();
+        } else {
+          rawMensajes = String(getVal(r, ['mensajes 1-1', 'mensajes 1:1', 'mensajes 1 a 1', 'mensajes', 'mensajes whatsapp']) || '').trim();
+        }
+
+        // 7. Comunidad GHL: Column G / Index 6 / 'Comunidad | GHL'
+        let rawSkool = '';
+        if (r['Comunidad | GHL'] !== undefined && String(r['Comunidad | GHL']).trim()) {
+          rawSkool = String(r['Comunidad | GHL']).trim();
+        } else if (r['__col_6'] !== undefined && String(r['__col_6']).trim()) {
+          rawSkool = String(r['__col_6']).trim();
+        } else {
+          rawSkool = String(getVal(r, ['comunidad | ghl', 'comunidad ghl', 'ghl', 'comunidad | skool', 'comunidad skool', 'skool', 'comunidad']) || '').trim();
+        }
 
         // Skip completely blank template rows (where all data columns are empty)
         if (!rawNombre && !rawFuente && !rawRespuesta && !rawContexto && !rawMensajes && !rawSkool) {
           return;
         }
 
-        const keys = Object.keys(r);
-        let rawDateVal = getVal(r, ['fecha', 'marca temporal', 'date', 'registro', 'timestamp']);
-        if (!rawDateVal) {
-          if (r['__col_0']) rawDateVal = r['__col_0'];
-          else if (r['A']) rawDateVal = r['A'];
-          else if (keys.length > 0) rawDateVal = r[keys[0]];
-        }
         const formattedFecha = formatExcelDate(rawDateVal);
         const fecha = formattedFecha || lastSeenFecha;
         if (formattedFecha) {
@@ -519,8 +571,19 @@ function parseSupervisorRows(rawRows, sheetUrl) {
         const nombre = rawNombre || '—';
         const fuente = (rawFuente && rawFuente !== '—' && rawFuente !== '-') ? rawFuente : '—';
         const respuesta = rawRespuesta || 'Sin Respuesta';
-        const intentosNum = Number(getVal(r, ['número de intentos', 'numero de intentos', 'intentos', 'nro intentos']) || (r['__col_4'] || r['E'] || 1));
+        
+        // 8. Intentos
+        let rawIntentos = '';
+        if (r['Número de Intentos'] !== undefined && String(r['Número de Intentos']).trim()) {
+          rawIntentos = r['Número de Intentos'];
+        } else if (r['__col_4'] !== undefined && String(r['__col_4']).trim()) {
+          rawIntentos = r['__col_4'];
+        } else {
+          rawIntentos = getVal(r, ['número de intentos', 'numero de intentos', 'intentos', 'nro intentos']);
+        }
+        const intentosNum = Number(rawIntentos);
         const intentos = isNaN(intentosNum) || intentosNum < 1 ? 1 : intentosNum;
+
         const mensajes1a1 = (rawMensajes.toUpperCase().includes('SI') || rawMensajes.toUpperCase().includes('SÍ') || rawMensajes === '1') ? 'Sí' : 'No';
         const comunidadSkool = (rawSkool.toUpperCase().includes('SI') || rawSkool.toUpperCase().includes('SÍ') || rawSkool === '1') ? 'Sí' : 'No';
         const contexto = rawContexto || 'Sin notas adicionales';
@@ -902,21 +965,27 @@ function getVal(rowObject, possibleKeys) {
     }
   }
 
-  // Pass 2: StartsWith / EndsWith match
+  // Pass 2: StartsWith / EndsWith match (only when both have length >= 3)
   for (const pKey of possibleKeys) {
     const normPKey = normalize(pKey);
     if (normPKey.length < 3) continue;
-    const found = normRowKeyMap.find(item => item.normalized.startsWith(normPKey) || normPKey.startsWith(item.normalized));
+    const found = normRowKeyMap.find(item =>
+      item.normalized.length >= 3 &&
+      (item.normalized.startsWith(normPKey) || normPKey.startsWith(item.normalized))
+    );
     if (found && rowObject[found.original] !== undefined && rowObject[found.original] !== null && String(rowObject[found.original]).trim() !== '') {
       return rowObject[found.original];
     }
   }
 
-  // Pass 3: Substring contains match (for headers with extra notes/parentheses)
+  // Pass 3: Substring contains match (only when both have length >= 4)
   for (const pKey of possibleKeys) {
     const normPKey = normalize(pKey);
     if (normPKey.length < 4) continue;
-    const found = normRowKeyMap.find(item => item.normalized.includes(normPKey) || normPKey.includes(item.normalized));
+    const found = normRowKeyMap.find(item =>
+      item.normalized.length >= 4 &&
+      (item.normalized.includes(normPKey) || normPKey.includes(item.normalized))
+    );
     if (found && rowObject[found.original] !== undefined && rowObject[found.original] !== null && String(rowObject[found.original]).trim() !== '') {
       return rowObject[found.original];
     }

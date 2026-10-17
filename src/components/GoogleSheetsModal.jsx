@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, Link2, RefreshCw, CheckCircle2, AlertCircle, HelpCircle,
-  Info, ChevronDown, ChevronUp, Layers, Users, PhoneCall, Trash2, Unlink
+  Info, ChevronDown, ChevronUp, Layers, Users, PhoneCall, Trash2, Unlink,
+  Share2, Briefcase
 } from 'lucide-react';
 import { fetchGoogleSheetData, fetchSupervisorSheetData } from '../utils/googleSheetsParser';
+import { fetchOrganicoSheetData, fetchCloserSheetData } from '../utils/specializedSheetsParser';
 
 export default function GoogleSheetsModal({
   isOpen,
@@ -13,8 +15,12 @@ export default function GoogleSheetsModal({
   userSession,
   groupsData = {},
   callersData = {},
+  organicoData = {},
+  closerData = {},
   onUpdateGroupDataForKey,
-  onUpdateCallerData
+  onUpdateCallerData,
+  onUpdateOrganicoData,
+  onUpdateCloserData
 }) {
   const isAdmin = userSession?.role === 'admin';
   const isCaller = userSession?.role === 'caller';
@@ -23,6 +29,8 @@ export default function GoogleSheetsModal({
   const [aspirantesUrl, setAspirantesUrl] = useState(groupsData?.['Setters Aspirantes']?.url || '');
   const [oficialesUrl,  setOficialesUrl]  = useState(groupsData?.['Setters Oficiales']?.url || '');
   const [callersUrl,    setCallersUrl]    = useState(callersData?.['Caller 1']?.sheetUrl || '');
+  const [organicoUrl,   setOrganicoUrl]   = useState(organicoData?.url || '');
+  const [closerUrl,     setCloserUrl]     = useState(closerData?.url || '');
 
   const [singleUrlInput, setSingleUrlInput] = useState(
     isCaller
@@ -38,6 +46,8 @@ export default function GoogleSheetsModal({
     setAspirantesUrl(groupsData?.['Setters Aspirantes']?.url || '');
     setOficialesUrl(groupsData?.['Setters Oficiales']?.url || '');
     setCallersUrl(callersData?.['Caller 1']?.sheetUrl || '');
+    setOrganicoUrl(organicoData?.url || '');
+    setCloserUrl(closerData?.url || '');
     if (isCaller) {
       setSingleUrlInput(callersData?.['Caller 1']?.sheetUrl || '');
     } else {
@@ -74,6 +84,18 @@ export default function GoogleSheetsModal({
         onUpdateCallerData('Caller 1', [], [], '', 'Caller 1 — Nury');
       }
       setChannelStatusMsg(prev => ({ ...prev, callers: { type: 'info', text: '🔗 Canal C desvinculado y datos vaciados.' } }));
+    } else if (channelKey === 'organico') {
+      setOrganicoUrl('');
+      if (onUpdateOrganicoData) {
+        onUpdateOrganicoData([], [], '');
+      }
+      setChannelStatusMsg(prev => ({ ...prev, organico: { type: 'info', text: '🔗 Canal D (Orgánico) desvinculado y datos vaciados.' } }));
+    } else if (channelKey === 'closer') {
+      setCloserUrl('');
+      if (onUpdateCloserData) {
+        onUpdateCloserData([], null, '');
+      }
+      setChannelStatusMsg(prev => ({ ...prev, closer: { type: 'info', text: '🔗 Canal E (Closer) desvinculado y datos vaciados.' } }));
     }
   };
 
@@ -122,6 +144,22 @@ export default function GoogleSheetsModal({
           onUpdateCallerData('Caller 1', res.callerRecords, res.scorecardReports, url, 'Caller 1 — Nury');
         }
         setChannelStatusMsg(prev => ({ ...prev, callers: { type: 'success', text: `${res.callerRecords.length} llamadas sincronizadas con éxito (${now})` } }));
+      } else if (channelKey === 'organico') {
+        const url = organicoUrl.trim();
+        if (!url) throw new Error('Ingresa la URL del Google Sheet de Orgánico.');
+        const res = await fetchOrganicoSheetData(url);
+        if (onUpdateOrganicoData) {
+          onUpdateOrganicoData(res.records, res.scorecardReports, url);
+        }
+        setChannelStatusMsg(prev => ({ ...prev, organico: { type: 'success', text: `${res.records.length} interacciones y ${res.scorecardReports.length} reportes sincronizados (${now})` } }));
+      } else if (channelKey === 'closer') {
+        const url = closerUrl.trim();
+        if (!url) throw new Error('Ingresa la URL del Google Sheet de Closer.');
+        const res = await fetchCloserSheetData(url);
+        if (onUpdateCloserData) {
+          onUpdateCloserData(res.reports, res.summary, url);
+        }
+        setChannelStatusMsg(prev => ({ ...prev, closer: { type: 'success', text: `${res.reports.length} filas de closer sincronizadas (${now})` } }));
       }
     } catch (err) {
       setChannelStatusMsg(prev => ({ ...prev, [channelKey]: { type: 'error', text: `Error: ${err.message}` } }));
@@ -157,6 +195,20 @@ export default function GoogleSheetsModal({
           if (onUpdateCallerData) onUpdateCallerData('Caller 1', res.callerRecords, res.scorecardReports, callersUrl.trim(), 'Caller 1 — Nury');
           results.push(`Callers: ${res.callerRecords.length} llamadas`);
         } catch (e) { results.push(`Callers: Error (${e.message})`); }
+      }
+      if (organicoUrl.trim()) {
+        try {
+          const res = await fetchOrganicoSheetData(organicoUrl.trim());
+          if (onUpdateOrganicoData) onUpdateOrganicoData(res.records, res.scorecardReports, organicoUrl.trim());
+          results.push(`Orgánico: ${res.records.length} interacciones`);
+        } catch (e) { results.push(`Orgánico: Error (${e.message})`); }
+      }
+      if (closerUrl.trim()) {
+        try {
+          const res = await fetchCloserSheetData(closerUrl.trim());
+          if (onUpdateCloserData) onUpdateCloserData(res.reports, res.summary, closerUrl.trim());
+          results.push(`Closer: ${res.reports.length} filas`);
+        } catch (e) { results.push(`Closer: Error (${e.message})`); }
       }
 
       setChannelStatusMsg({ all: { type: 'success', text: `Sincronización completa: ${results.join(' · ')} (${now})` } });
@@ -394,55 +446,155 @@ export default function GoogleSheetsModal({
                 )}
               </div>
 
-              {/* CANAL 3: CALL TEAM */}
-              <div style={{ background: '#ffffff', border: '1.5px solid #e9d5ff', borderRadius: '10px', padding: '12px 14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#6d28d9' }}>3. Hoja Call Team (Callers / Supervisión)</span>
-                    {callersData?.['Caller 1']?.callerRecords?.length > 0 && (
-                      <span style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#7c3aed', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 800 }}>
-                        {callersData['Caller 1'].callerRecords.length} llamadas
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {(callersUrl || callersData?.['Caller 1']?.callerRecords?.length > 0) && (
+                {/* CANAL 3: CALL TEAM */}
+                <div style={{ background: '#ffffff', border: '1.5px solid #e9d5ff', borderRadius: '10px', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#6d28d9' }}>3. Hoja Call Team (Callers / Supervisión)</span>
+                      {callersData?.['Caller 1']?.callerRecords?.length > 0 && (
+                        <span style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#7c3aed', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 800 }}>
+                          {callersData['Caller 1'].callerRecords.length} llamadas
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {(callersUrl || callersData?.['Caller 1']?.callerRecords?.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkSpecificChannel('callers')}
+                          disabled={syncingChannel === 'callers'}
+                          className="btn-cyber-ghost"
+                          style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 800, color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                          title="Desvincular enlace y vaciar registros de Call Team"
+                        >
+                          <Trash2 size={12} /> Desvincular
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleUnlinkSpecificChannel('callers')}
-                        disabled={syncingChannel === 'callers'}
-                        className="btn-cyber-ghost"
-                        style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 800, color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
-                        title="Desvincular enlace y vaciar registros de Call Team"
+                        onClick={() => handleSyncSpecificChannel('callers')}
+                        disabled={syncingChannel === 'callers' || !callersUrl.trim()}
+                        className="btn-cyber-primary"
+                        style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 800, background: '#7c3aed', borderColor: '#7c3aed' }}
                       >
-                        <Trash2 size={12} /> Desvincular
+                        <RefreshCw size={12} className={syncingChannel === 'callers' ? 'spin-icon' : ''} />
+                        {syncingChannel === 'callers' ? 'Sincronizando...' : 'Sincronizar'}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleSyncSpecificChannel('callers')}
-                      disabled={syncingChannel === 'callers' || !callersUrl.trim()}
-                      className="btn-cyber-primary"
-                      style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 800, background: '#7c3aed', borderColor: '#7c3aed' }}
-                    >
-                      <RefreshCw size={12} className={syncingChannel === 'callers' ? 'spin-icon' : ''} />
-                      {syncingChannel === 'callers' ? 'Sincronizando...' : 'Sincronizar'}
-                    </button>
+                    </div>
                   </div>
+                  <input
+                    type="url"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={callersUrl}
+                    onChange={(e) => setCallersUrl(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {channelStatusMsg.callers && (
+                    <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 700, color: channelStatusMsg.callers.type === 'error' ? '#dc2626' : (channelStatusMsg.callers.type === 'info' ? '#2563eb' : '#059669') }}>
+                      {channelStatusMsg.callers.text}
+                    </div>
+                  )}
                 </div>
-                <input
-                  type="url"
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  value={callersUrl}
-                  onChange={(e) => setCallersUrl(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
-                />
-                {channelStatusMsg.callers && (
-                  <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 700, color: channelStatusMsg.callers.type === 'error' ? '#dc2626' : (channelStatusMsg.callers.type === 'info' ? '#2563eb' : '#059669') }}>
-                    {channelStatusMsg.callers.text}
+
+                {/* CANAL 4: ORGÁNICO SCORECARD */}
+                <div style={{ background: '#ffffff', border: '1.5px solid #a7f3d0', borderRadius: '10px', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#047857' }}>4. Hoja Orgánico (Scorecard & Interacciones)</span>
+                      {organicoData?.records?.length > 0 && (
+                        <span style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 800 }}>
+                          {organicoData.records.length} registros
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {(organicoUrl || organicoData?.records?.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkSpecificChannel('organico')}
+                          disabled={syncingChannel === 'organico'}
+                          className="btn-cyber-ghost"
+                          style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 800, color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                          title="Desvincular enlace y vaciar registros de Orgánico"
+                        >
+                          <Trash2 size={12} /> Desvincular
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSyncSpecificChannel('organico')}
+                        disabled={syncingChannel === 'organico' || !organicoUrl.trim()}
+                        className="btn-cyber-primary"
+                        style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 800, background: '#059669', borderColor: '#059669' }}
+                      >
+                        <RefreshCw size={12} className={syncingChannel === 'organico' ? 'spin-icon' : ''} />
+                        {syncingChannel === 'organico' ? 'Sincronizando...' : 'Sincronizar'}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <input
+                    type="url"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={organicoUrl}
+                    onChange={(e) => setOrganicoUrl(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {channelStatusMsg.organico && (
+                    <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 700, color: channelStatusMsg.organico.type === 'error' ? '#dc2626' : (channelStatusMsg.organico.type === 'info' ? '#2563eb' : '#059669') }}>
+                      {channelStatusMsg.organico.text}
+                    </div>
+                  )}
+                </div>
+
+                {/* CANAL 5: CLOSER SCORECARD */}
+                <div style={{ background: '#ffffff', border: '1.5px solid #c7d2fe', borderRadius: '10px', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#4338ca' }}>5. Hoja Closer (Scorecard & Facturación)</span>
+                      {closerData?.reports?.length > 0 && (
+                        <span style={{ background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 800 }}>
+                          {closerData.reports.length} filas
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {(closerUrl || closerData?.reports?.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkSpecificChannel('closer')}
+                          disabled={syncingChannel === 'closer'}
+                          className="btn-cyber-ghost"
+                          style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 800, color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                          title="Desvincular enlace y vaciar registros de Closer"
+                        >
+                          <Trash2 size={12} /> Desvincular
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSyncSpecificChannel('closer')}
+                        disabled={syncingChannel === 'closer' || !closerUrl.trim()}
+                        className="btn-cyber-primary"
+                        style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 800, background: '#4f46e5', borderColor: '#4f46e5' }}
+                      >
+                        <RefreshCw size={12} className={syncingChannel === 'closer' ? 'spin-icon' : ''} />
+                        {syncingChannel === 'closer' ? 'Sincronizando...' : 'Sincronizar'}
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={closerUrl}
+                    onChange={(e) => setCloserUrl(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {channelStatusMsg.closer && (
+                    <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 700, color: channelStatusMsg.closer.type === 'error' ? '#dc2626' : (channelStatusMsg.closer.type === 'info' ? '#2563eb' : '#059669') }}>
+                      {channelStatusMsg.closer.text}
+                    </div>
+                  )}
+                </div>
 
               {channelStatusMsg.all && (
                 <div style={{

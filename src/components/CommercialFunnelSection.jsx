@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useAnimatedNumber } from '../utils/useAnimatedNumber';
 import { matchesDateRange, getWeeksFromReports, matchesWeek } from '../utils/security';
+import EquivalenteInversionCard from './EquivalenteInversionCard';
 
 function AnimatedBar({ width, background, height = 7, borderRadius = 9999, style = {} }) {
   const [w, setW] = useState(0);
@@ -123,7 +124,28 @@ function GradientRing({ pct, color = '#059669', size = 56, stroke = 7, children 
   );
 }
 
-export default function CommercialFunnelSection({ reports = [] }) {
+export default function CommercialFunnelSection({ reports = [], closerData = null }) {
+  // Total Cierres calculados desde Activate + Catalizador
+  const totalCierres = React.useMemo(() => {
+    let activate = 0;
+    let catalizador = 0;
+    if (closerData?.reports && Array.isArray(closerData.reports)) {
+      closerData.reports.forEach(r => {
+        activate += Number(r.prod3 || 0);
+        catalizador += Number(r.prod4 || 0);
+      });
+    }
+    if (closerData?.summary) {
+      if (closerData.summary.activate !== undefined && closerData.summary.activate !== null && closerData.summary.activate !== '') {
+        activate = Number(closerData.summary.activate);
+      }
+      if (closerData.summary.catalizador !== undefined && closerData.summary.catalizador !== null && closerData.summary.catalizador !== '') {
+        catalizador = Number(closerData.summary.catalizador);
+      }
+    }
+    return activate + catalizador;
+  }, [closerData]);
+
   // ── Filters State (Semana, SDR, Rango de Fechas) ──
   const [selectedWeek, setSelectedWeek] = useState('Todos');
   const [selectedSdr, setSelectedSdr] = useState('Todos');
@@ -640,6 +662,14 @@ export default function CommercialFunnelSection({ reports = [] }) {
 
         </div>
       </div>
+
+      {/* ─── EQUIVALENTE EN INVERSIÓN PUBLICITARIA (CPL $3.50 · CPA $30 · CAC $80) ─── */}
+      <EquivalenteInversionCard
+        diagnosticos={totalDiagnosticos}
+        agendados={totalAgendamientos}
+        cierres={totalCierres}
+        style={{ marginBottom: '18px' }}
+      />
 
       {/* ─── 2. BLOQUE DE CANALES: WAALAXY VS MANUAL CON CANTIDAD DE MENSAJES & SECUENCIA M1/M2/M3 ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '18px' }}>
