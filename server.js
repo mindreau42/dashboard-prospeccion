@@ -452,8 +452,19 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET') {
       try {
         const state = await getPersistedState();
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-        res.end(JSON.stringify(state));
+        const stateJson = JSON.stringify(state);
+        const etag = `"${crypto.createHash('md5').update(stateJson).digest('hex')}"`;
+        if (req.headers['if-none-match'] === etag) {
+          res.writeHead(304, { 'ETag': etag });
+          res.end();
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'ETag': etag
+        });
+        res.end(stateJson);
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));

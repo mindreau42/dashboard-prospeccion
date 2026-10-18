@@ -301,17 +301,17 @@ export default function App() {
   // ── Smart Sync — tracks last fetch time to avoid redundant Sheets calls ──
   const lastSheetsFetchRef = useRef(0);       // timestamp of last Google Sheets fetch
   const lastServerPollRef  = useRef(0);       // timestamp of last /api/state GET
-  const SHEETS_INTERVAL_MS = 5 * 60 * 1000;  // fetch Sheets every 5 minutes
-  const SERVER_POLL_MS     = 60 * 1000;      // poll local /api/state every minute
+  const SHEETS_INTERVAL_MS = 10 * 60 * 1000; // fetch Sheets every 10 minutes
+  const SERVER_POLL_MS     = 60 * 1000;       // poll local /api/state at most once per minute
 
   // ── Global Live Multi-User Auto-Sync (Centralized Server as Single Source of Truth) ──
   const performLiveSync = useCallback(async (forceSheets = false, customGroups = null, customCallers = null, customOrganico = null, customCloser = null) => {
     const now = Date.now();
 
     try {
-      // 0. Poll state from local central server (consistent across all users)
+      // 0. Poll state from central server with 304 caching (zero bytes if unchanged)
       fetch('/api/state')
-        .then(res => res.json())
+        .then(res => (res.status === 304 ? null : res.json()))
         .then(serverState => {
           if (serverState && typeof serverState === 'object') {
             if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
@@ -483,11 +483,11 @@ export default function App() {
     window.addEventListener('keydown', markActivity, { passive: true });
     window.addEventListener('click', markActivity, { passive: true });
 
-    // Background sync cada 5 min SOLO si la pestaña está visible y el usuario activo
+    // Background sync cada 10 min SOLO si la pestaña está visible y el usuario activo
     const interval = setInterval(() => {
       if (document.hidden) return; // Pestaña minimizada u oculta: NO enviar pings para que Render duerma
       const idleMinutes = (Date.now() - lastUserActivity) / 60000;
-      if (idleMinutes > 15) return; // Usuario inactivo > 15 min: permitir que Render entre en reposo (0 horas)
+      if (idleMinutes > 8) return; // Usuario inactivo > 8 min: silenciar pings para que Render entre en reposo (0 horas)
       performLiveSync();
     }, SHEETS_INTERVAL_MS);
 
