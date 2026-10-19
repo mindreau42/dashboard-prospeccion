@@ -85,7 +85,20 @@ const DEFAULT_SERVER_STATE = {
       lastSync: ''
     }
   },
-  adminReports: []
+  adminReports: [],
+  organicoData: {
+    records: [],
+    scorecardReports: [],
+    url: 'https://docs.google.com/spreadsheets/d/1N092h1lIRYKeOtlVkB42_JYR3HR1Nker/edit?gid=1087525007#gid=1087525007',
+    lastSync: ''
+  },
+  closerData: {
+    reports: [],
+    summary: null,
+    url: 'https://docs.google.com/spreadsheets/d/1U5CyKhgMjvw6djjMiIGiidno41dJC-iM/edit?gid=1981983632#gid=1981983632',
+    lastSync: ''
+  },
+  users: []
 };
 
 // ── SESIONES & RATE LIMITING ──
@@ -245,7 +258,7 @@ function readLocalDb() {
       return JSON.parse(raw);
     }
   } catch (_) {}
-  return DEFAULT_SERVER_STATE;
+  return null;
 }
 
 function writeLocalDb(data) {
@@ -257,33 +270,103 @@ function writeLocalDb(data) {
   }
 }
 
-async function getPersistedState() {
-  const localDb = readLocalDb();
-  if (localDb && (localDb.groupsData || localDb.users)) {
-    return localDb;
+function mergeGroups(a = {}, b = {}) {
+  const res = { ...DEFAULT_SERVER_STATE.groupsData, ...a, ...b };
+  delete res._organicoData;
+  delete res._closerData;
+  for (const key of Object.keys(res)) {
+    const aRecs = a[key]?.records || [];
+    const bRecs = b[key]?.records || [];
+    if (bRecs.length > aRecs.length) {
+      res[key] = b[key];
+    } else if (aRecs.length > 0) {
+      res[key] = a[key];
+    }
   }
+  return res;
+}
+
+function mergeCallers(a = {}, b = {}) {
+  const res = { ...DEFAULT_SERVER_STATE.callersData, ...a, ...b };
+  for (const key of Object.keys(res)) {
+    const aRecs = a[key]?.callerRecords || [];
+    const bRecs = b[key]?.callerRecords || [];
+    if (bRecs.length > aRecs.length) {
+      res[key] = b[key];
+    } else if (aRecs.length > 0) {
+      res[key] = a[key];
+    }
+  }
+  return res;
+}
+
+async function getPersistedState() {
+  let supabaseState = null;
   if (isSupabaseConfigured) {
     try {
       const data = await supabaseFetch('/app_state?id=eq.main_state&select=*');
       if (data && Array.isArray(data) && data.length > 0) {
         const row = data[0];
         const rawUsers = Array.isArray(row.users_data) && row.users_data.length > 0 ? row.users_data : undefined;
-        return {
-          groupsData: row.groups_data || DEFAULT_SERVER_STATE.groupsData,
+        let groups = row.groups_data || DEFAULT_SERVER_STATE.groupsData;
+        let organico = row.organico_data || groups._organicoData || DEFAULT_SERVER_STATE.organicoData;
+        let closer = row.closer_data || groups._closerData || DEFAULT_SERVER_STATE.closerData;
+
+        if (groups && typeof groups === 'object') {
+          const { _organicoData, _closerData, ...cleanGroups } = groups;
+          groups = cleanGroups;
+        }
+
+        supabaseState = {
+          groupsData: groups,
           callersData: row.callers_data || DEFAULT_SERVER_STATE.callersData,
+          organicoData: organico,
+          closerData: closer,
           adminReports: row.admin_reports || DEFAULT_SERVER_STATE.adminReports,
           users: rawUsers
         };
       }
     } catch (_) {}
   }
+
+  const localDb = readLocalDb();
+
+  // Si Supabase respondió (es la fuente de verdad en la nube / Render)
+  if (supabaseState) {
+    if (localDb) {
+      const merged = {
+        groupsData: mergeGroups(supabaseState.groupsData, localDb.groupsData),
+        callersData: mergeCallers(supabaseState.callersData, localDb.callersData),
+        organicoData: (localDb.organicoData?.records?.length || 0) > (supabaseState.organicoData?.records?.length || 0) ? localDb.organicoData : supabaseState.organicoData,
+        closerData: (localDb.closerData?.reports?.length || 0) > (supabaseState.closerData?.reports?.length || 0) ? localDb.closerData : supabaseState.closerData,
+        adminReports: (localDb.adminReports?.length || 0) > (supabaseState.adminReports?.length || 0) ? localDb.adminReports : supabaseState.adminReports,
+        users: (localDb.users?.length || 0) > (supabaseState.users?.length || 0) ? localDb.users : (supabaseState.users || localDb.users)
+      };
+      writeLocalDb(merged);
+      return merged;
+    }
+    writeLocalDb(supabaseState);
+    return supabaseState;
+  }
+
+  // Si Supabase no está configurado o no respondió, recurrir a localDb
+  if (localDb) {
+    return {
+      groupsData: localDb.groupsData || DEFAULT_SERVER_STATE.groupsData,
+      callersData: localDb.callersData || DEFAULT_SERVER_STATE.callersData,
+      organicoData: localDb.organicoData || DEFAULT_SERVER_STATE.organicoData,
+      closerData: localDb.closerData || DEFAULT_SERVER_STATE.closerData,
+      adminReports: localDb.adminReports || DEFAULT_SERVER_STATE.adminReports,
+      users: localDb.users || DEFAULT_SERVER_STATE.users
+    };
+  }
+
   return DEFAULT_SERVER_STATE;
 }
 
 async function savePersistedState(incoming) {
-  const current = readLocalDb() || {};
+  const current = (await getPersistedState()) || DEFAULT_SERVER_STATE;
   const rawUsers = incoming.users !== undefined ? incoming.users : current.users;
-  const cleanUsers = rawUsers;
 
   const merged = {
     ...current,
@@ -296,25 +379,52 @@ async function savePersistedState(incoming) {
       ...current.callersData,
       ...incoming.callersData
     } : current.callersData,
+    organicoData: incoming.organicoData !== undefined ? incoming.organicoData : current.organicoData,
+    closerData: incoming.closerData !== undefined ? incoming.closerData : current.closerData,
     adminReports: incoming.adminReports !== undefined ? incoming.adminReports : current.adminReports,
-    users: cleanUsers
+    users: rawUsers
   };
+
+  if (merged.groupsData) {
+    delete merged.groupsData._organicoData;
+    delete merged.groupsData._closerData;
+  }
 
   // Guardar datos COMPLETOS en el archivo local de la PC (server_data.json)
   writeLocalDb(merged);
 
-  // Respaldo asíncrono en Supabase si está disponible (sin contraseñas en texto plano)
+  // Respaldo asíncrono y resiliente en Supabase
   if (isSupabaseConfigured) {
+    const groupsWithFallback = {
+      ...merged.groupsData,
+      _organicoData: merged.organicoData,
+      _closerData: merged.closerData
+    };
+
+    // 1. Respaldo garantizado usando las columnas activas
+    const fallbackPayload = {
+      id: 'main_state',
+      groups_data: groupsWithFallback,
+      callers_data: merged.callersData,
+      admin_reports: merged.adminReports || [],
+      users_data: merged.users || [],
+      updated_at: new Date().toISOString()
+    };
+
+    supabaseFetch('/app_state', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates',
+      body: JSON.stringify(fallbackPayload)
+    }).catch(() => {});
+
+    // 2. Intento con columnas dedicadas organico_data y closer_data si ya fueron añadidas a Supabase
     supabaseFetch('/app_state', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates',
       body: JSON.stringify({
-        id: 'main_state',
-        groups_data: merged.groupsData,
-        callers_data: merged.callersData,
-        admin_reports: merged.adminReports || [],
-        users_data: merged.users || [],
-        updated_at: new Date().toISOString()
+        ...fallbackPayload,
+        organico_data: merged.organicoData,
+        closer_data: merged.closerData
       })
     }).catch(() => {});
   }

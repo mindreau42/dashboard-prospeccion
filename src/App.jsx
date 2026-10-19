@@ -250,36 +250,67 @@ export default function App() {
   useEffect(() => { save(SK.CLOSER_DATA, closerData); }, [closerData]);
 
   useEffect(() => {
-    // 1. Fetch persistent server state from central server on PC
+    // 1. Fetch persistent server state — hidratación segura: el servidor nunca pisa datos del cliente si el cliente tiene más registros
     fetch('/api/state')
       .then(res => res.json())
       .then(serverState => {
-        if (serverState && typeof serverState === 'object') {
-          if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {
-            setUsers(serverState.users.map(({ password, ...u }) => u));
-          }
-          if (serverState.groupsData) setGroupsData(serverState.groupsData);
-          if (serverState.callersData) setCallersData(serverState.callersData);
-          if (serverState.organicoData) setOrganicoData(serverState.organicoData);
-          if (serverState.closerData) setCloserData(serverState.closerData);
-          if (serverState.adminReports) setAdminReports(serverState.adminReports);
+        if (!serverState || typeof serverState !== 'object') return;
 
-          // Si el servidor local aún no tiene registros cargados o los callers tienen registros desactualizados sin nombres, sincronizamos
-          const totalRecords = Object.values(serverState.groupsData || {}).reduce((acc, g) => acc + (g.records?.length || 0), 0);
-          const totalCallerRecords = Object.values(serverState.callersData || {}).reduce((acc, c) => acc + (c.callerRecords?.length || 0), 0);
-          const totalOrganicoRecords = (serverState.organicoData?.records?.length || 0);
-          const totalCloserRecords = (serverState.closerData?.reports?.length || 0);
-          const callersNeedRefresh = Object.values(serverState.callersData || {}).some(c => {
-            const recs = c.callerRecords || [];
-            return recs.length > 0 && (
-              recs.slice(-30).some(r => !r.nombre || r.nombre === '—') ||
-              recs.filter(r => !r.nombre || r.nombre === '—').length > 5
-            );
-          });
+        // Contar registros en el servidor
+        const svrGroups   = Object.values(serverState.groupsData  || {}).reduce((a, g) => a + (g.records?.length || 0), 0);
+        const svrCallers  = Object.values(serverState.callersData  || {}).reduce((a, c) => a + (c.callerRecords?.length || 0), 0);
+        const svrOrganico = serverState.organicoData?.records?.length  || 0;
+        const svrCloser   = serverState.closerData?.reports?.length    || 0;
+        const svrUsers    = serverState.users?.length                  || 0;
 
-          if (totalRecords === 0 || totalCallerRecords === 0 || totalOrganicoRecords === 0 || totalCloserRecords === 0 || callersNeedRefresh) {
-            performLiveSync(true, serverState.groupsData, serverState.callersData, serverState.organicoData, serverState.closerData);
-          }
+        // Contar registros en el cliente (localStorage, cargados al inicializar React state)
+        const cliGroups   = Object.values(groupsData   || {}).reduce((a, g) => a + (g.records?.length || 0), 0);
+        const cliCallers  = Object.values(callersData  || {}).reduce((a, c) => a + (c.callerRecords?.length || 0), 0);
+        const cliOrganico = organicoData?.records?.length  || 0;
+        const cliCloser   = closerData?.reports?.length    || 0;
+
+        // Aplicar datos del servidor SOLO si tiene más registros que el cliente (evita borrado por Render restart)
+        if (svrUsers > 0)                     setUsers(serverState.users.map(({ password, ...u }) => u));
+        if (svrGroups   >= cliGroups   && serverState.groupsData)   setGroupsData(serverState.groupsData);
+        if (svrCallers  >= cliCallers  && serverState.callersData)  setCallersData(serverState.callersData);
+        if (svrOrganico >= cliOrganico && serverState.organicoData) setOrganicoData(serverState.organicoData);
+        if (svrCloser   >= cliCloser   && serverState.closerData)   setCloserData(serverState.closerData);
+        if (serverState.adminReports) setAdminReports(serverState.adminReports);
+
+        // Si el servidor está vacío (Render acaba de reiniciar), empujamos los datos del cliente al servidor
+        const serverIsEmpty = svrGroups === 0 && svrCallers === 0 && svrOrganico === 0 && svrCloser === 0;
+        if (serverIsEmpty && (cliGroups > 0 || cliCallers > 0 || cliOrganico > 0 || cliCloser > 0)) {
+          fetch('/api/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              groupsData,
+              callersData,
+              organicoData,
+              closerData,
+              adminReports
+            })
+          }).catch(() => {});
+        }
+
+        // Si el servidor tiene datos pero faltan registros en algún módulo, sincronizar con Google Sheets
+        const callersNeedRefresh = Object.values(serverState.callersData || {}).some(c => {
+          const recs = c.callerRecords || [];
+          return recs.length > 0 && (
+            recs.slice(-30).some(r => !r.nombre || r.nombre === '—') ||
+            recs.filter(r => !r.nombre || r.nombre === '—').length > 5
+          );
+        });
+
+        const needsSheetSync =
+          (svrGroups === 0 && cliGroups === 0) ||
+          (svrCallers === 0 && cliCallers === 0) ||
+          (svrOrganico === 0 && cliOrganico === 0) ||
+          (svrCloser === 0 && cliCloser === 0) ||
+          callersNeedRefresh;
+
+        if (needsSheetSync) {
+          performLiveSync(true, serverState.groupsData, serverState.callersData, serverState.organicoData, serverState.closerData);
         }
       })
       .catch(() => {});

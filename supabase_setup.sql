@@ -4,14 +4,22 @@
 -- Copia y pega este script en el "SQL Editor" de tu proyecto Supabase y pulsa "RUN".
 -- Esto creará las 3 tablas esenciales con persistencia garantizada y anti-pérdida.
 
--- 1. TABLA: app_state (Guarda todo el estado del dashboard: grupos, callers, reportes)
+-- 1. TABLA: app_state (Guarda todo el estado del dashboard: grupos, callers, reportes y usuarios)
 CREATE TABLE IF NOT EXISTS app_state (
     id TEXT PRIMARY KEY DEFAULT 'main_state',
     groups_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     callers_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     admin_reports JSONB NOT NULL DEFAULT '[]'::jsonb,
+    users_data JSONB NOT NULL DEFAULT '[]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Asegurar columna users_data si la tabla ya existía previamente
+ALTER TABLE app_state ADD COLUMN IF NOT EXISTS users_data JSONB DEFAULT '[]'::jsonb;
+
+-- Columnas para datos de Canal Orgánico y Closer Scorecard
+ALTER TABLE app_state ADD COLUMN IF NOT EXISTS organico_data JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE app_state ADD COLUMN IF NOT EXISTS closer_data JSONB DEFAULT '{}'::jsonb;
 
 -- 2. TABLA: dashboard_users (Guarda usuarios, roles, hashes de contraseñas y permisos)
 CREATE TABLE IF NOT EXISTS dashboard_users (
