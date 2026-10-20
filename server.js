@@ -251,6 +251,29 @@ async function supabaseFetch(endpoint, options = {}) {
   }
 }
 
+// ── CACHÉ EN MEMORIA: evita hammear Supabase en cada poll de /api/state ──
+// Se invalida automáticamente al guardar (savePersistedState) o cada 5 min
+let _memoryCache = null;
+let _memoryCacheTime = 0;
+const MEMORY_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+function getCachedState() {
+  if (_memoryCache && (Date.now() - _memoryCacheTime) < MEMORY_CACHE_TTL) {
+    return _memoryCache;
+  }
+  return null;
+}
+
+function setCachedState(state) {
+  _memoryCache = state;
+  _memoryCacheTime = Date.now();
+}
+
+function invalidateCache() {
+  _memoryCache = null;
+  _memoryCacheTime = 0;
+}
+
 function readLocalDb() {
   try {
     if (fs.existsSync(DB_FILE)) {
@@ -301,6 +324,10 @@ function mergeCallers(a = {}, b = {}) {
 }
 
 async function getPersistedState() {
+  // Servir desde caché en memoria si está vigente (evita llamadas a Supabase en cada poll)
+  const cached = getCachedState();
+  if (cached) return cached;
+
   let supabaseState = null;
   if (isSupabaseConfigured) {
     try {
@@ -331,10 +358,12 @@ async function getPersistedState() {
 
   const localDb = readLocalDb();
 
+  let result;
+
   // Si Supabase respondió (es la fuente de verdad en la nube / Render)
   if (supabaseState) {
     if (localDb) {
-      const merged = {
+      result = {
         groupsData: mergeGroups(supabaseState.groupsData, localDb.groupsData),
         callersData: mergeCallers(supabaseState.callersData, localDb.callersData),
         organicoData: (localDb.organicoData?.records?.length || 0) > (supabaseState.organicoData?.records?.length || 0) ? localDb.organicoData : supabaseState.organicoData,
@@ -342,16 +371,18 @@ async function getPersistedState() {
         adminReports: (localDb.adminReports?.length || 0) > (supabaseState.adminReports?.length || 0) ? localDb.adminReports : supabaseState.adminReports,
         users: (localDb.users?.length || 0) > (supabaseState.users?.length || 0) ? localDb.users : (supabaseState.users || localDb.users)
       };
-      writeLocalDb(merged);
-      return merged;
+      writeLocalDb(result);
+    } else {
+      result = supabaseState;
+      writeLocalDb(result);
     }
-    writeLocalDb(supabaseState);
-    return supabaseState;
+    setCachedState(result);
+    return result;
   }
 
   // Si Supabase no está configurado o no respondió, recurrir a localDb
   if (localDb) {
-    return {
+    result = {
       groupsData: localDb.groupsData || DEFAULT_SERVER_STATE.groupsData,
       callersData: localDb.callersData || DEFAULT_SERVER_STATE.callersData,
       organicoData: localDb.organicoData || DEFAULT_SERVER_STATE.organicoData,
@@ -359,13 +390,16 @@ async function getPersistedState() {
       adminReports: localDb.adminReports || DEFAULT_SERVER_STATE.adminReports,
       users: localDb.users || DEFAULT_SERVER_STATE.users
     };
+    setCachedState(result);
+    return result;
   }
 
   return DEFAULT_SERVER_STATE;
 }
 
 async function savePersistedState(incoming) {
-  const current = (await getPersistedState()) || DEFAULT_SERVER_STATE;
+  // Usar caché o localDb para no llamar a Supabase innecesariamente en cada guardado
+  const current = getCachedState() || readLocalDb() || DEFAULT_SERVER_STATE;
   const rawUsers = incoming.users !== undefined ? incoming.users : current.users;
 
   const merged = {
@@ -392,6 +426,9 @@ async function savePersistedState(incoming) {
 
   // Guardar datos COMPLETOS en el archivo local de la PC (server_data.json)
   writeLocalDb(merged);
+
+  // Actualizar caché en memoria con el estado más reciente
+  setCachedState(merged);
 
   // Respaldo asíncrono y resiliente en Supabase
   if (isSupabaseConfigured) {
