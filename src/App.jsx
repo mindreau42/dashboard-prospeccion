@@ -332,6 +332,7 @@ export default function App() {
   // ── Smart Sync — tracks last fetch time to avoid redundant Sheets calls ──
   const lastSheetsFetchRef = useRef(0);       // timestamp of last Google Sheets fetch
   const lastServerPollRef  = useRef(0);       // timestamp of last /api/state GET
+  const lastEtagRef        = useRef(null);    // ETag caching for zero-byte responses
   const SHEETS_INTERVAL_MS = 10 * 60 * 1000; // fetch Sheets every 10 minutes
   const SERVER_POLL_MS     = 60 * 1000;       // poll local /api/state at most once per minute
 
@@ -341,8 +342,14 @@ export default function App() {
 
     try {
       // 0. Poll state from central server with 304 caching (zero bytes if unchanged)
-      fetch('/api/state')
-        .then(res => (res.status === 304 ? null : res.json()))
+      const pollHeaders = lastEtagRef.current ? { 'If-None-Match': lastEtagRef.current } : {};
+      fetch('/api/state', { headers: pollHeaders })
+        .then(res => {
+          if (res.status === 304) return null;
+          const et = res.headers.get('ETag');
+          if (et) lastEtagRef.current = et;
+          return res.json();
+        })
         .then(serverState => {
           if (serverState && typeof serverState === 'object') {
             if (serverState.users && Array.isArray(serverState.users) && serverState.users.length > 0) {

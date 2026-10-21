@@ -594,7 +594,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── ENDPOINT: /api/state (GET & POST) — Ligero (< 2 KB) ──
+  // ── ENDPOINT: /api/state (GET & POST) — Ligero (< 2 KB con GZIP) ──
   if (pathname === '/api/state') {
     if (req.method === 'GET') {
       try {
@@ -602,16 +602,34 @@ const server = http.createServer(async (req, res) => {
         const stateJson = JSON.stringify(state);
         const etag = `"${crypto.createHash('md5').update(stateJson).digest('hex')}"`;
         if (req.headers['if-none-match'] === etag) {
-          res.writeHead(304, { 'ETag': etag });
+          res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'no-cache' });
           res.end();
           return;
         }
-        res.writeHead(200, {
+
+        const headers = {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
           'ETag': etag
-        });
-        res.end(stateJson);
+        };
+
+        const acceptEncoding = req.headers['accept-encoding'] || '';
+        if (acceptEncoding.includes('gzip')) {
+          headers['Content-Encoding'] = 'gzip';
+          zlib.gzip(stateJson, (zErr, gzipped) => {
+            if (!zErr && gzipped) {
+              res.writeHead(200, headers);
+              res.end(gzipped);
+            } else {
+              delete headers['Content-Encoding'];
+              res.writeHead(200, headers);
+              res.end(stateJson);
+            }
+          });
+        } else {
+          res.writeHead(200, headers);
+          res.end(stateJson);
+        }
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
